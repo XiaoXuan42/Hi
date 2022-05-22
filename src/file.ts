@@ -3,12 +3,13 @@ import * as path from 'path'
 import { render_markdown } from './markdown'
 import { Template } from './template'
 import * as nunjucks from 'nunjucks'
+import { Config } from './config'
 
 class File {
     constructor(public name: string, public content: string) {}
 
     // the content of the file to be generated
-    output(template?: Template): string {
+    output(template: Template): string {
         return this.content;
     }
 
@@ -25,7 +26,7 @@ class JinjaFile extends File {
         this.html = nunjucks.renderString(content, {});
     }
 
-    output(template?: Template): string {
+    output(template: Template): string {
         return this.html;
     }
 
@@ -52,7 +53,7 @@ class MarkDownFile extends File {
         this.stylesheet = mk_stylesheet;
     }
 
-    output(template?: Template): string {
+    output(template: Template): string {
         if (template) {
             return nunjucks.renderString(template.markdown_template, {markdown: this});
         } else {
@@ -69,28 +70,26 @@ class MarkDownFile extends File {
 type DirNode = {[name: string]: File | DirNode};
 
 export class FileTree {
-    root_path: string;
-    routes: {[path: string]: string};
     file_root: DirNode;
     route_root: DirNode;
+    config: Config;
 
     /**
      * @param dirname root directory of the project(absolute path)
      * @param targets files that we are interested in
      * @param routes path of file system to url
      */
-    constructor(dirname: string, targets: string[], routes: {[path: string]: string}) {
-        this.root_path = dirname;
-        this.routes = routes;
-        nunjucks.configure(dirname, {});
+    constructor(config: Config) {
+        this.config = config;
+        nunjucks.configure(this.config.root_dir, {});
         this.file_root = {};
         this.route_root = {};
-        this.create_file_tree(this.file_root, this.route_root, '', '', targets);
+        this.create_file_tree(this.file_root, this.route_root, '', '', this.config.include_files);
     }
 
     private create_file_tree(file_node: DirNode, route_node: DirNode, url: string, dirname: string, targets: string[]) {
         for (let target of targets) {
-            let filepath = path.join(this.root_path, dirname, target);
+            let filepath = path.join(this.config.root_dir, dirname, target);
             if (fs.lstatSync(filepath).isFile()) {
                 // read file content
                 let content = fs.readFileSync(filepath).toString();
@@ -123,8 +122,8 @@ export class FileTree {
 
                     let next_url: string = url + `/${target}`;
                     let next_router = {};
-                    if (next_url in this.routes) {
-                        next_url = this.routes[next_url];
+                    if (next_url in this.config.routes) {
+                        next_url = this.config.routes[next_url];
                         let tmp_router = this.access_by_url(next_url.split('/'));
                         if (tmp_router instanceof File) {
                             throw Error(`Url ${next_url} can't be a directory and a file at the same time`);
@@ -161,15 +160,15 @@ export class FileTree {
         return cur;
     }
 
-    public write(outdir: string, template?: Template) {
+    public write(outdir: string) {
         // simply remove out directory to update
         if (fs.existsSync(outdir)) {
             fs.rmdirSync(outdir, {recursive: true});
         }
-        this.write_tree(this.route_root, outdir, template);
+        this.write_tree(this.route_root, outdir);
     }
 
-    private write_tree(node: DirNode, outdir: string, template?: Template) {
+    private write_tree(node: DirNode, outdir: string) {
         if (!fs.existsSync(outdir)) {
             fs.mkdirSync(outdir, { recursive: true });
         }
@@ -177,10 +176,11 @@ export class FileTree {
             let value = node[name];
             if (value instanceof File) {
                 let target_path = path.join(outdir, value.get_name());
-                fs.writeFileSync(target_path, value.output(template));
+                let out_content = value.output(this.config.template);
+                fs.writeFileSync(target_path, out_content);
             } else {
                 let target_path = path.join(outdir, name);
-                this.write_tree(value, target_path, template);
+                this.write_tree(value, target_path);
             }
         }
     }

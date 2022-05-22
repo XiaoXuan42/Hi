@@ -1,12 +1,17 @@
 import * as path from 'path'
+import { Template } from './template'
 
 export class Config {
+    readonly root_dir: string;
     readonly template_path: string;
     readonly include_files: string[];
     readonly output_dir: string;
     readonly routes: {[path:string]: string};
+    readonly privates: Set<string>;
+    readonly template: Template;
 
     constructor(dirname: string, yaml: {[key: string]: any}) {
+        this.root_dir = dirname;
         this.template_path = yaml['template_path'];
         if (!path.isAbsolute(this.template_path)) {
             this.template_path = path.join(dirname, this.template_path);
@@ -25,5 +30,14 @@ export class Config {
         if ('routes' in yaml) {
             this.routes = yaml['routes'];
         }
+
+        this.privates = new Set<string>();
+        if ('privates' in yaml) {
+            for (let file of yaml['privates']) {
+                this.privates.add(file);
+            }
+        }
+
+        this.template = new Template(this.template_path);
     }
 }

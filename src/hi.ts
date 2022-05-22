@@ -13,6 +13,9 @@ export class Hi {
 
     constructor(dirname: string) {
         this.dirname = dirname;
+        if (!path.isAbsolute(this.dirname)) {
+            this.dirname = path.join(process.cwd(), this.dirname);
+        }
         let meta = YAML.parse(fs.readFileSync(path.join(dirname, 'config.yml'), 'utf-8'));
         this.config = new Config(this.dirname, meta);
         this.template = new Template(this.config.template_path);

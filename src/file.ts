@@ -7,12 +7,31 @@ import * as nunjucks from 'nunjucks'
 class File {
     constructor(public name: string, public content: string) {}
 
+    // the content of the file to be generated
     output(template?: Template): string {
         return this.content;
     }
 
+    // get the filename of the file to be generated
     get_name(): string {
         return this.name;
+    }
+}
+
+class JinjaFile extends File {
+    html: string;
+    constructor(name: string, content: string) {
+        super(name, content);
+        this.html = nunjucks.renderString(content, {});
+    }
+
+    output(template?: Template): string {
+        return this.html;
+    }
+
+    get_name(): string {
+        let basename = path.basename(this.name, '.jinja');
+        return basename + '.html';
     }
 }
 
@@ -25,11 +44,11 @@ const highlight_css = String.raw
 const mk_stylesheet = [katex_css, highlight_css].join('\n');
 
 class MarkDownFile extends File {
-    mk_html: string;
+    html: string;
     stylesheet: string;
     constructor(name: string, content: string) {
         super(name, content);
-        this.mk_html = render_markdown(content);
+        this.html = render_markdown(content);
         this.stylesheet = mk_stylesheet;
     }
 
@@ -37,7 +56,7 @@ class MarkDownFile extends File {
         if (template) {
             return nunjucks.renderString(template.markdown_template, {markdown: this});
         } else {
-            return this.mk_html;
+            return this.html;
         }
     }
 
@@ -53,6 +72,7 @@ export class FileTree {
     root: Dir;
 
     constructor(dirname: string, targets: string[]) {
+        nunjucks.configure(dirname, {});
         this.root = this.create_file_tree(dirname, targets);
     }
 
@@ -70,6 +90,9 @@ export class FileTree {
                 if (extname === ".md") {
                     // markdown
                     result[target] = new MarkDownFile(target, content);
+                } else if (extname === ".jinja") {
+                    // jinja template converts to html
+                    result[target] = new JinjaFile(target, content);
                 } else {
                     result[target] = new File(target, content);
                 }

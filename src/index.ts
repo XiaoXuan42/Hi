@@ -1,4 +1,9 @@
-import { Template } from './template'
-import path from 'node:path'
+import {Hi} from './hi'
+import { Command } from 'commander'
 
-const template = new Template(path.join(path.dirname(__dirname), 'templates/default'));
+let program = new Command();
+program.requiredOption('-p, --path <path>', 'root directory of the project');
+program.parse(process.argv);
+let opts = program.opts();
+let hi = new Hi(opts.path);
+hi.generate()

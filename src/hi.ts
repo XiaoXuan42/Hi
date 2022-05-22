@@ -1,29 +1,29 @@
-import fs from 'node:fs'
-import path from 'node:path'
+import * as fs from 'fs'
+import * as path from 'path'
 import YAML from 'yaml'
+import { Config } from './config';
 import { Template } from './template';
+import { FileTree } from './file'
 
 export class Hi {
     dirname: string;
-    meta: { [name: string]: any; };
+    config: Config;
     template: Template;
+    filetree: FileTree;
 
     constructor(dirname: string) {
         this.dirname = dirname;
-        this.meta = YAML.parse(fs.readFileSync(path.join(dirname, 'meta.yml'), 'utf-8'));
-
-        let template_name: string;
-        if ("template" in this.meta) {
-            if (!(typeof(this.meta["template"]) === "string")) {
-                throw Error("Template attribute should be a string.");
-            } else {
-                template_name = this.meta["template"];
-            }
-        } else {
-            template_name = 'default';
-        }
-        this.template = new Template(path.join(path.dirname(__dirname), `templates/${template_name}`));
+        let meta = YAML.parse(fs.readFileSync(path.join(dirname, 'config.yml'), 'utf-8'));
+        this.config = new Config(this.dirname, meta);
+        this.template = new Template(this.config.template_path);
+        this.filetree = new FileTree(this.dirname, this.config.include_files);
     }
 
-    
+    generate_with_outdir(outdir: string) {
+        this.filetree.write(outdir, this.template);
+    }
+
+    generate() {
+        this.generate_with_outdir(this.config.output_dir);
+    }
 }

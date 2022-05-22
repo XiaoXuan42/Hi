@@ -4,6 +4,7 @@ export class Config {
     readonly template_path: string;
     readonly include_files: string[];
     readonly output_dir: string;
+    readonly routes: {[path:string]: string};
 
     constructor(dirname: string, yaml: {[key: string]: any}) {
         this.template_path = yaml['template_path'];
@@ -18,6 +19,11 @@ export class Config {
         }
         if (!path.isAbsolute(this.output_dir)) {
             this.output_dir = path.join(dirname, this.output_dir);
+        }
+        
+        this.routes = {};
+        if ('routes' in yaml) {
+            this.routes = yaml['routes'];
         }
     }
 }

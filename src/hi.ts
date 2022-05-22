@@ -19,7 +19,7 @@ export class Hi {
         let meta = YAML.parse(fs.readFileSync(path.join(dirname, 'config.yml'), 'utf-8'));
         this.config = new Config(this.dirname, meta);
         this.template = new Template(this.config.template_path);
-        this.filetree = new FileTree(this.dirname, this.config.include_files);
+        this.filetree = new FileTree(this.dirname, this.config.include_files, this.config.routes);
     }
 
     generate_with_outdir(outdir: string) {

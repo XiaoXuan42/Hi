@@ -3,9 +3,14 @@ import {AES} from 'crypto-js'
 let private_scripts: string = String.raw`<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
 <script type="text/javascript">
   function submit_passwd() {
-    var html_str = _decipher();
-    console.log(html_str);
-    _replace(html_str);
+    try {
+      var html_str = _decipher();
+      console.log(html_str);
+      _replace(html_str);
+      return true;
+    } catch(error) {
+      return false;
+    }
   }
   function _decipher() {
     var ciphertext = document.getElementById('ciphertext').innerText;
@@ -13,6 +18,11 @@ let private_scripts: string = String.raw`<script type="text/javascript" src="htt
     return plaintext;
   }
   function _replace(html_str) {
+    var html_tag = html_str.match(/<html>.*<\/html>/);
+    console.log(html_tag);
+    if (!html_str.match(/<html>(.|\n)*<\/html>/)) {
+      throw Error("Not a valid html file");
+    }
     document.open();
     document.write(html_str);
     document.close();

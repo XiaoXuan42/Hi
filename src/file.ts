@@ -3,7 +3,7 @@ import * as path from 'path'
 import { render_markdown } from './markdown'
 import { Template } from './template'
 import { Config } from './config'
-import { encrypt } from './private'
+import { encrypt, get_private_scripts } from './private'
 
 class File {
     constructor(public name: string, public content: string, public is_private: boolean) {}
@@ -181,7 +181,7 @@ export class FileTree {
                 if (value.is_private) {
                     // encrypt the content of value
                     out_content = encrypt(out_content, this.config.passwd);
-                    out_content = Template.get_instantiation(this.config.template.private_template, {ciphertext: out_content});
+                    out_content = Template.get_instantiation(this.config.template.private_template, {ciphertext: out_content, private_scripts: get_private_scripts()});
                     console.log(out_content);
                 }
                 fs.writeFileSync(target_path, out_content);

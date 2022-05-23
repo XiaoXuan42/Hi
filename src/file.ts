@@ -2,11 +2,11 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { render_markdown } from './markdown'
 import { Template } from './template'
-import * as nunjucks from 'nunjucks'
 import { Config } from './config'
+import { encrypt } from './private'
 
 class File {
-    constructor(public name: string, public content: string) {}
+    constructor(public name: string, public content: string, public is_private: boolean) {}
 
     // the content of the file to be generated
     output(template: Template): string {
@@ -21,9 +21,9 @@ class File {
 
 class JinjaFile extends File {
     html: string;
-    constructor(name: string, content: string) {
-        super(name, content);
-        this.html = nunjucks.renderString(content, {});
+    constructor(name: string, content: string, is_private: boolean) {
+        super(name, content, is_private);
+        this.html = Template.get_instantiation(content, {});
     }
 
     output(template: Template): string {
@@ -47,18 +47,14 @@ const mk_stylesheet = [katex_css, highlight_css].join('\n');
 class MarkDownFile extends File {
     html: string;
     stylesheet: string;
-    constructor(name: string, content: string) {
-        super(name, content);
+    constructor(name: string, content: string, is_private: boolean) {
+        super(name, content, is_private);
         this.html = render_markdown(content);
         this.stylesheet = mk_stylesheet;
     }
 
     output(template: Template): string {
-        if (template) {
-            return nunjucks.renderString(template.markdown_template, {markdown: this});
-        } else {
-            return this.html;
-        }
+        return Template.get_instantiation(template.markdown_template, {markdown: this});
     }
 
     get_name(): string {
@@ -81,15 +77,21 @@ export class FileTree {
      */
     constructor(config: Config) {
         this.config = config;
-        nunjucks.configure(this.config.root_dir, {});
+        Template.config_working_dir(this.config.working_dir);
         this.file_root = {};
         this.route_root = {};
-        this.create_file_tree(this.file_root, this.route_root, '', '', this.config.include_files);
+        this.create_file_tree(this.file_root, this.route_root, '', '', this.config.include_files, false);
     }
 
-    private create_file_tree(file_node: DirNode, route_node: DirNode, url: string, dirname: string, targets: string[]) {
+    private create_file_tree(file_node: DirNode, route_node: DirNode, url: string, dirname: string, targets: string[], is_private: boolean) {
         for (let target of targets) {
-            let filepath = path.join(this.config.root_dir, dirname, target);
+            let filepath = path.join(this.config.working_dir, dirname, target);
+            let next_dirname = dirname + `/${target}`;
+            let file_is_private = is_private;
+            if (this.config.privates.has(next_dirname)) {
+                file_is_private = true;
+            }
+
             if (fs.lstatSync(filepath).isFile()) {
                 // read file content
                 let content = fs.readFileSync(filepath).toString();
@@ -100,12 +102,12 @@ export class FileTree {
                 let new_file: File;
                 if (extname === ".md") {
                     // markdown
-                    new_file = new MarkDownFile(target, content);
+                    new_file = new MarkDownFile(target, content, file_is_private);
                 } else if (extname === ".jinja") {
                     // jinja template converts to html
-                    new_file = new JinjaFile(target, content);
+                    new_file = new JinjaFile(target, content, file_is_private);
                 } else {
-                    new_file = new File(target, content);
+                    new_file = new File(target, content, file_is_private);
                 }
                 file_node[target] = new_file;
                 if (basename in route_node) {
@@ -115,7 +117,6 @@ export class FileTree {
             } else {
                 if (fs.lstatSync(filepath).isDirectory()) {
                     // read all files inside directories
-                    let next_dirname = path.join(dirname, target);
                     let next_targets: string[] = fs.readdirSync(filepath);
                     let next_dir: DirNode = {};
                     file_node[target] = next_dir;
@@ -137,7 +138,7 @@ export class FileTree {
                         }
                     }
 
-                    this.create_file_tree(next_dir, next_router, next_url, next_dirname, next_targets);
+                    this.create_file_tree(next_dir, next_router, next_url, next_dirname, next_targets, file_is_private);
                 }
             }
         }
@@ -177,6 +178,12 @@ export class FileTree {
             if (value instanceof File) {
                 let target_path = path.join(outdir, value.get_name());
                 let out_content = value.output(this.config.template);
+                if (value.is_private) {
+                    // encrypt the content of value
+                    out_content = encrypt(out_content, "helloworld");
+                    out_content = Template.get_instantiation(this.config.template.private_template, {ciphertext: out_content});
+                    console.log(out_content);
+                }
                 fs.writeFileSync(target_path, out_content);
             } else {
                 let target_path = path.join(outdir, name);

@@ -2,7 +2,7 @@ import * as path from 'path'
 import { Template } from './template'
 
 export class Config {
-    readonly root_dir: string;
+    readonly working_dir: string;
     readonly template_path: string;
     readonly include_files: string[];
     readonly output_dir: string;
@@ -11,7 +11,7 @@ export class Config {
     readonly template: Template;
 
     constructor(dirname: string, yaml: {[key: string]: any}) {
-        this.root_dir = dirname;
+        this.working_dir = dirname;
         this.template_path = yaml['template_path'];
         if (!path.isAbsolute(this.template_path)) {
             this.template_path = path.join(dirname, this.template_path);

@@ -2,24 +2,22 @@ import {AES} from 'crypto-js'
 
 let private_scripts: string = String.raw`<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
 <script type="text/javascript">
-  function submit_passwd() {
+  function submit_passwd(passwd) {
     try {
-      var html_str = _decipher();
-      console.log(html_str);
+      var html_str = _decipher(passwd);
       _replace(html_str);
       return true;
     } catch(error) {
       return false;
     }
   }
-  function _decipher() {
+  function _decipher(passwd) {
     var ciphertext = document.getElementById('ciphertext').innerText;
-    var plaintext = CryptoJS.AES.decrypt(ciphertext, "jinjahelloworld").toString(CryptoJS.enc.Utf8);
+    var plaintext = CryptoJS.AES.decrypt(ciphertext, passwd).toString(CryptoJS.enc.Utf8);
     return plaintext;
   }
   function _replace(html_str) {
     var html_tag = html_str.match(/<html>.*<\/html>/);
-    console.log(html_tag);
     if (!html_str.match(/<html>(.|\n)*<\/html>/)) {
       throw Error("Not a valid html file");
     }

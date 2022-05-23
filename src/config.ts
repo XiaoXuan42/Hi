@@ -9,6 +9,7 @@ export class Config {
     readonly routes: {[path:string]: string};
     readonly privates: Set<string>;
     readonly template: Template;
+    readonly passwd: string;
 
     constructor(dirname: string, yaml: {[key: string]: any}) {
         this.working_dir = dirname;
@@ -39,5 +40,6 @@ export class Config {
         }
 
         this.template = new Template(this.template_path);
+        this.passwd = yaml['passwd'];
     }
 }

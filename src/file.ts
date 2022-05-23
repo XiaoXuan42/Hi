@@ -180,7 +180,7 @@ export class FileTree {
                 let out_content = value.output(this.config.template);
                 if (value.is_private) {
                     // encrypt the content of value
-                    out_content = encrypt(out_content, "helloworld");
+                    out_content = encrypt(out_content, this.config.passwd);
                     out_content = Template.get_instantiation(this.config.template.private_template, {ciphertext: out_content});
                     console.log(out_content);
                 }

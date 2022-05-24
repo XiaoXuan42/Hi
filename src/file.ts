@@ -20,14 +20,16 @@ class File {
 }
 
 class JinjaFile extends File {
-    html: string;
+    private _html: undefined | string;
     constructor(name: string, content: string, is_private: boolean) {
         super(name, content, is_private);
-        this.html = FileTemplate.get_instantiation(content, {});
     }
 
     output(template: FileTemplate): string {
-        return this.html;
+        if (!this._html) {
+            this._html = FileTemplate.get_instantiation(this.content, {});
+        }
+        return this._html;
     }
 
     get_name(): string {
@@ -45,6 +47,7 @@ const mk_stylesheet = [katex_css, highlight_css].join('\n');
 class MarkDownFile extends File {
     html: string;
     stylesheet: string;
+    private _html: string | undefined;
     constructor(name: string, content: string, is_private: boolean) {
         super(name, content, is_private);
         this.html = render_markdown(content);
@@ -52,7 +55,10 @@ class MarkDownFile extends File {
     }
 
     output(template: FileTemplate): string {
-        return FileTemplate.get_instantiation(template.markdown_template, { markdown: this });
+        if (!this._html) {
+            this._html = FileTemplate.get_instantiation(template.markdown_template, { markdown: this });
+        }
+        return this._html;
     }
 
     get_name(): string {

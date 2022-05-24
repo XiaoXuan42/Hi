@@ -3,11 +3,13 @@ import * as process from 'process';
 import { Config } from './config';
 import { FileTree } from './file';
 import { Listener } from './listen';
+import { Server } from './server';
 
 export class Hi {
     private config: Config;
     private filetree: FileTree;
     private listener: Listener;
+    private server: Server;
 
     constructor(project_root_dir: string) {
         if (!path.isAbsolute(project_root_dir)) {
@@ -16,13 +18,15 @@ export class Hi {
         this.config = new Config(project_root_dir);
         this.filetree = new FileTree(this.config);
         this.listener = new Listener(this.config, this.filetree);
+        this.server = new Server(this.filetree);
     }
 
     generate() {
         this.filetree.write();
     }
 
-    listen() {
+    live() {
         this.listener.listen();
+        this.server.start();
     }
 }

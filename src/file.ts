@@ -154,8 +154,10 @@ export class FileTree {
                 }
                 file_node.files[target] = new_file;
 
-                route_node.suburls[target] = new UrlNode(next_url);
-                route_node.suburls[target].file = new_file;
+                const new_url_name = new_file.get_name();
+                next_url = url + `/${new_url_name}`;
+                route_node.suburls[new_url_name] = new UrlNode(next_url);
+                route_node.suburls[new_url_name].file = new_file;
             } else {
                 if (fs.lstatSync(filepath).isDirectory()) {
                     // read all files inside directories
@@ -243,14 +245,34 @@ export class FileTree {
             }
             if (filename in file_node.subdirs) {
                 file_node = file_node.subdirs[filename];
+                url_node = url_node.suburls[filename];
             } else if(filename in file_node.files) {
                 file_node = file_node.files[filename];
+                url_node = url_node.suburls[file_node.get_name()];
             } else {
                 return undefined;
             }
-            url_node = url_node.suburls[filename];
         }
         return [url_node.url, file_node];
+    }
+
+    // return the relative path to the target file.
+    private find_by_url(url: urlstr): [string, File|DirNode] | undefined {
+        const url_array = url.split('/').filter(s => s);
+        let url_node: UrlNode = this.url_root;
+        for (const cur_url of url_array) {
+            if (url_node.file) {
+                return undefined;
+            } else if (!(cur_url in url_node.suburls)) {
+                return undefined;
+            }
+            url_node = url_node.suburls[cur_url];
+        }
+        if (!url_node.file) {
+            return undefined;
+        }
+        const target_path = path.join(this.config.output_dir, url);
+        return [target_path, url_node.file];
     }
 
     private output_file(url: urlstr, file: File) {
@@ -279,6 +301,16 @@ export class FileTree {
                 node.on_change(content);
                 this.output_file(url, node);
             }
+        }
+    }
+
+    get_by_url(url: urlstr): string | undefined {
+        const find_res = this.find_by_url(url);
+        if (find_res) {
+            const [target_path, file] = find_res;
+            return fs.readFileSync(target_path).toString();
+        } else {
+            return undefined;
         }
     }
 

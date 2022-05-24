@@ -1,7 +1,5 @@
-import * as fs from 'fs';
 import * as path from 'path';
 import * as process from 'process';
-import YAML from 'yaml';
 import { Config } from './config';
 import { FileTree } from './file';
 
@@ -9,12 +7,11 @@ export class Hi {
     config: Config;
     filetree: FileTree;
 
-    constructor(dirname: string) {
-        if (!path.isAbsolute(dirname)) {
-            dirname = path.join(process.cwd(), dirname);
+    constructor(project_root_dir: string) {
+        if (!path.isAbsolute(project_root_dir)) {
+            project_root_dir = path.join(process.cwd(), project_root_dir);
         }
-        let meta = YAML.parse(fs.readFileSync(path.join(dirname, 'config.yml'), 'utf-8'));
-        this.config = new Config(dirname, meta);
+        this.config = new Config(project_root_dir);
         this.filetree = new FileTree(this.config);
     }
 

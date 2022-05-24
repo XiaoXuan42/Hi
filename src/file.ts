@@ -77,7 +77,7 @@ export class FileTree {
 
     constructor(config: Config) {
         this.config = config;
-        FileTemplate.config_working_dir(this.config.working_dir);
+        FileTemplate.config_working_dir(this.config.project_root_dir);
         this.file_root = {};
         this.route_root = {};
         this.create_file_tree(this.file_root, this.route_root, '', '', this.config.include_files, false);
@@ -85,7 +85,7 @@ export class FileTree {
 
     private create_file_tree(file_node: DirNode, route_node: DirNode, url: string, dirname: string, targets: string[], is_private: boolean) {
         for (let target of targets) {
-            let filepath = path.join(this.config.working_dir, dirname, target);
+            let filepath = path.join(this.config.project_root_dir, dirname, target);
             let next_dirname = dirname + `/${target}`;
             let file_is_private = is_private;
             if (this.config.privates.has(next_dirname)) {

@@ -1,25 +1,25 @@
 import * as path from 'path';
-import { Template } from './template';
+import { FileTemplate } from './template';
 
 export class Config {
-    readonly working_dir: string;
-    readonly template_path: string;
+    readonly working_dir: string;  // root directory of current project
+    readonly file_template_path: string;
     readonly include_files: string[];
     readonly output_dir: string;
     readonly routes: {[path:string]: string};
     readonly privates: Set<string>;
-    readonly template: Template;
+    readonly file_template: FileTemplate;
     readonly passwd: string;
 
     constructor(dirname: string, yaml: {[key: string]: any}) {
         this.working_dir = dirname;
-        this.template_path = yaml['template_path'];
-        if (!path.isAbsolute(this.template_path)) {
-            this.template_path = path.join(dirname, this.template_path);
+        this.file_template_path = yaml['fileTemplatePath'];
+        if (!path.isAbsolute(this.file_template_path)) {
+            this.file_template_path = path.join(dirname, this.file_template_path);
         }
         this.include_files = yaml['include'];
-        if ('output_dir' in yaml) {
-            this.output_dir = yaml['output_dir'];
+        if ('outputDirectory' in yaml) {
+            this.output_dir = yaml['outputDirectory'];
         } else {
             this.output_dir = 'output';
         }
@@ -39,7 +39,7 @@ export class Config {
             }
         }
 
-        this.template = new Template(this.template_path);
+        this.file_template = new FileTemplate(this.file_template_path);
         this.passwd = yaml['passwd'];
     }
 }

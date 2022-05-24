@@ -1,15 +1,15 @@
-import * as fs from 'fs'
-import * as path from 'path'
-import { render_markdown } from './markdown'
-import { Template } from './template'
-import { Config } from './config'
-import { encrypt, get_private_scripts } from './private'
+import * as fs from 'fs';
+import * as path from 'path';
+import { render_markdown } from './markdown';
+import { FileTemplate } from './template';
+import { Config } from './config';
+import { encrypt, get_private_scripts } from './private';
 
 class File {
     constructor(public name: string, public content: string, public is_private: boolean) { }
 
     // the content of the file to be generated
-    output(template: Template): string {
+    output(template: FileTemplate): string {
         return this.content;
     }
 
@@ -23,10 +23,10 @@ class JinjaFile extends File {
     html: string;
     constructor(name: string, content: string, is_private: boolean) {
         super(name, content, is_private);
-        this.html = Template.get_instantiation(content, {});
+        this.html = FileTemplate.get_instantiation(content, {});
     }
 
-    output(template: Template): string {
+    output(template: FileTemplate): string {
         return this.html;
     }
 
@@ -51,8 +51,8 @@ class MarkDownFile extends File {
         this.stylesheet = mk_stylesheet;
     }
 
-    output(template: Template): string {
-        return Template.get_instantiation(template.markdown_template, { markdown: this });
+    output(template: FileTemplate): string {
+        return FileTemplate.get_instantiation(template.markdown_template, { markdown: this });
     }
 
     get_name(): string {
@@ -75,7 +75,7 @@ export class FileTree {
      */
     constructor(config: Config) {
         this.config = config;
-        Template.config_working_dir(this.config.working_dir);
+        FileTemplate.config_working_dir(this.config.working_dir);
         this.file_root = {};
         this.route_root = {};
         this.create_file_tree(this.file_root, this.route_root, '', '', this.config.include_files, false);
@@ -175,12 +175,11 @@ export class FileTree {
             let value = node[name];
             if (value instanceof File) {
                 let target_path = path.join(outdir, value.get_name());
-                let out_content = value.output(this.config.template);
+                let out_content = value.output(this.config.file_template);
                 if (value.is_private) {
                     // encrypt the content of value
                     out_content = encrypt(out_content, this.config.passwd);
-                    out_content = Template.get_instantiation(this.config.template.private_template, { ciphertext: out_content, private_scripts: get_private_scripts() });
-                    console.log(out_content);
+                    out_content = FileTemplate.get_instantiation(this.config.file_template.private_template, { ciphertext: out_content, private_scripts: get_private_scripts() });
                 }
                 fs.writeFileSync(target_path, out_content);
             } else {

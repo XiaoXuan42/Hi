@@ -1,4 +1,4 @@
-import {AES} from 'crypto-js';
+import { AES } from 'crypto-js';
 
 let private_scripts: string = String.raw`<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
 <script type="text/javascript">

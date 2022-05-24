@@ -5,8 +5,12 @@ import { FileTemplate } from './template';
 import { Config } from './config';
 import { encrypt, get_private_scripts } from './private';
 
-class File {
-    constructor(public name: string, public content: string, public is_private: boolean) { }
+export class File {
+    name: string;
+
+    constructor(public abspath: string, public url: string, public content: string, public is_private: boolean) {
+        this.name = path.basename(abspath);
+    }
 
     // the content of the file to be generated
     output(template: FileTemplate): string {
@@ -21,8 +25,8 @@ class File {
 
 class JinjaFile extends File {
     private _html: undefined | string;
-    constructor(name: string, content: string, is_private: boolean) {
-        super(name, content, is_private);
+    constructor(public abspath: string, public url: string, public content: string, public is_private: boolean) {
+        super(abspath, url, content, is_private);
     }
 
     output(template: FileTemplate): string {
@@ -49,8 +53,8 @@ class MarkDownFile extends File {
     static readonly highlight_css = String.raw`<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">`;
     static readonly mk_stylesheet = [MarkDownFile.katex_css, MarkDownFile.highlight_css].join('\n');
 
-    constructor(name: string, content: string, is_private: boolean) {
-        super(name, content, is_private);
+    constructor(public abspath: string, public url: string, public content: string, public is_private: boolean) {
+        super(abspath, url, content, is_private);
         this.html = render_markdown(content);
         this.stylesheet = MarkDownFile.mk_stylesheet;
     }
@@ -71,9 +75,9 @@ class MarkDownFile extends File {
 type DirNode = { [name: string]: File | DirNode };
 
 export class FileTree {
-    file_root: DirNode;
-    route_root: DirNode;
-    config: Config;
+    private file_root: DirNode;
+    private route_root: DirNode;
+    private config: Config;
 
     constructor(config: Config) {
         this.config = config;
@@ -102,12 +106,12 @@ export class FileTree {
                 let new_file: File;
                 if (extname === ".md") {
                     // markdown
-                    new_file = new MarkDownFile(target, content, file_is_private);
+                    new_file = new MarkDownFile(filepath, url, content, file_is_private);
                 } else if (extname === ".jinja") {
                     // jinja template converts to html
-                    new_file = new JinjaFile(target, content, file_is_private);
+                    new_file = new JinjaFile(filepath, url, content, file_is_private);
                 } else {
-                    new_file = new File(target, content, file_is_private);
+                    new_file = new File(filepath, url, content, file_is_private);
                 }
                 file_node[target] = new_file;
                 if (basename in route_node) {
@@ -187,6 +191,21 @@ export class FileTree {
             } else {
                 let target_path = path.join(outdir, name);
                 this.write_tree(value, target_path);
+            }
+        }
+    }
+
+    visit(callback: (f: File) => any) {
+        this._visit(this.file_root, callback);
+    }
+
+    private _visit(node: DirNode, callback: (f: File) => any) {
+        for (let filename in node) {
+            const target = node[filename];
+            if (target instanceof File) {
+                callback(target);
+            } else {
+                this._visit(target, callback);
             }
         }
     }

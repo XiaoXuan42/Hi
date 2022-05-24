@@ -18,12 +18,8 @@ export class Hi {
         this.listener = new Listener(this.config, this.filetree);
     }
 
-    private generate_with_outdir(outdir: string) {
-        this.filetree.write(outdir);
-    }
-
     generate() {
-        this.generate_with_outdir(this.config.output_dir);
+        this.filetree.write();
     }
 
     listen() {

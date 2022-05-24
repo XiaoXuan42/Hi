@@ -12,7 +12,7 @@ export class Listener {
 
     listen() {
         this.listen_init();
-        setInterval(this.update.bind(this), 1000);
+        setInterval(this.update.bind(this), 500);
     }
 
     private listen_init() {
@@ -25,9 +25,8 @@ export class Listener {
     }
 
     private update() {
-        console.log('file changes:');
         for (let path of this.dirty) {
-            console.log(path);
+            this.filetree.on_change(path);
         }
         this.dirty.clear();
     }

@@ -1,6 +1,6 @@
 import katex from 'katex';
-import { marked } from 'marked'
-import hljs from 'highlight.js'
+import { marked } from 'marked';
+import hljs from 'highlight.js';
 
 // see https://github.com/markedjs/marked/issues/1538
 export function render_markdown(mkdown: string): string {
@@ -36,13 +36,13 @@ export function render_markdown(mkdown: string): string {
     };
     new_renderer.paragraph = (text: string) => {
         return old_renderer.paragraph(replace_with_math_ids(text));
-    }
+    };
     new_renderer.tablecell = (content: string, flags) => {
         return old_renderer.tablecell(replace_with_math_ids(content), flags);
-    }
+    };
     new_renderer.text = (text: string) => {
         return old_renderer.text(replace_with_math_ids(text));
-    }
+    };
     let render_result = marked(mkdown, {renderer: new_renderer});
     render_result = render_result.replace(/(__special_katex_id__\d)/g, (_match, capture) => {
         const { type, expression } = math_expressions[capture];

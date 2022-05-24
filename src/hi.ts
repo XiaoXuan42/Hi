@@ -1,9 +1,9 @@
-import * as fs from 'fs'
-import * as path from 'path'
-import YAML from 'yaml'
+import * as fs from 'fs';
+import * as path from 'path';
+import * as process from 'process';
+import YAML from 'yaml';
 import { Config } from './config';
-import { Template } from './template';
-import { FileTree } from './file'
+import { FileTree } from './file';
 
 export class Hi {
     config: Config;

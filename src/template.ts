@@ -1,6 +1,6 @@
-import * as fs from 'fs'
-import * as path from 'path'
-import * as nunjucks from 'nunjucks'
+import * as fs from 'fs';
+import * as path from 'path';
+import * as nunjucks from 'nunjucks';
 
 export class Template {
     readonly markdown_template: string;

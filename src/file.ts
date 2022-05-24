@@ -6,7 +6,7 @@ import { Config } from './config'
 import { encrypt, get_private_scripts } from './private'
 
 class File {
-    constructor(public name: string, public content: string, public is_private: boolean) {}
+    constructor(public name: string, public content: string, public is_private: boolean) { }
 
     // the content of the file to be generated
     output(template: Template): string {
@@ -36,12 +36,10 @@ class JinjaFile extends File {
     }
 }
 
-const katex_css = String.raw
-`<link rel="stylesheet" 
+const katex_css = String.raw`<link rel="stylesheet" 
 href="https://cdn.jsdelivr.net/npm/katex@0.15.6/dist/katex.min.css"
  integrity="sha384-ZPe7yZ91iWxYumsBEOn7ieg8q/o+qh/hQpSaPow8T6BwALcXSCS6C6file_rootRPIAnTQs" crossorigin="anonymous">`;
-const highlight_css = String.raw
-`<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">`;
+const highlight_css = String.raw`<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">`;
 const mk_stylesheet = [katex_css, highlight_css].join('\n');
 
 class MarkDownFile extends File {
@@ -54,7 +52,7 @@ class MarkDownFile extends File {
     }
 
     output(template: Template): string {
-        return Template.get_instantiation(template.markdown_template, {markdown: this});
+        return Template.get_instantiation(template.markdown_template, { markdown: this });
     }
 
     get_name(): string {
@@ -63,7 +61,7 @@ class MarkDownFile extends File {
     }
 }
 
-type DirNode = {[name: string]: File | DirNode};
+type DirNode = { [name: string]: File | DirNode };
 
 export class FileTree {
     file_root: DirNode;
@@ -164,7 +162,7 @@ export class FileTree {
     public write(outdir: string) {
         // simply remove out directory to update
         if (fs.existsSync(outdir)) {
-            fs.rmdirSync(outdir, {recursive: true});
+            fs.rmdirSync(outdir, { recursive: true });
         }
         this.write_tree(this.route_root, outdir);
     }
@@ -181,7 +179,7 @@ export class FileTree {
                 if (value.is_private) {
                     // encrypt the content of value
                     out_content = encrypt(out_content, this.config.passwd);
-                    out_content = Template.get_instantiation(this.config.template.private_template, {ciphertext: out_content, private_scripts: get_private_scripts()});
+                    out_content = Template.get_instantiation(this.config.template.private_template, { ciphertext: out_content, private_scripts: get_private_scripts() });
                     console.log(out_content);
                 }
                 fs.writeFileSync(target_path, out_content);

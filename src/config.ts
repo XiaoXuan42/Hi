@@ -1,5 +1,5 @@
-import * as path from 'path'
-import { Template } from './template'
+import * as path from 'path';
+import { Template } from './template';
 
 export class Config {
     readonly working_dir: string;

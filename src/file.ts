@@ -38,20 +38,21 @@ class JinjaFile extends File {
     }
 }
 
-const katex_css = String.raw`<link rel="stylesheet" 
-href="https://cdn.jsdelivr.net/npm/katex@0.15.6/dist/katex.min.css"
- integrity="sha384-ZPe7yZ91iWxYumsBEOn7ieg8q/o+qh/hQpSaPow8T6BwALcXSCS6C6file_rootRPIAnTQs" crossorigin="anonymous">`;
-const highlight_css = String.raw`<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">`;
-const mk_stylesheet = [katex_css, highlight_css].join('\n');
-
 class MarkDownFile extends File {
     html: string;
     stylesheet: string;
     private _html: string | undefined;
+
+    static readonly katex_css = String.raw`<link rel="stylesheet" 
+    href="https://cdn.jsdelivr.net/npm/katex@0.15.6/dist/katex.min.css"
+    integrity="sha384-ZPe7yZ91iWxYumsBEOn7ieg8q/o+qh/hQpSaPow8T6BwALcXSCS6C6file_rootRPIAnTQs" crossorigin="anonymous">`;
+    static readonly highlight_css = String.raw`<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">`;
+    static readonly mk_stylesheet = [MarkDownFile.katex_css, MarkDownFile.highlight_css].join('\n');
+
     constructor(name: string, content: string, is_private: boolean) {
         super(name, content, is_private);
         this.html = render_markdown(content);
-        this.stylesheet = mk_stylesheet;
+        this.stylesheet = MarkDownFile.mk_stylesheet;
     }
 
     output(template: FileTemplate): string {
@@ -74,11 +75,6 @@ export class FileTree {
     route_root: DirNode;
     config: Config;
 
-    /**
-     * @param dirname root directory of the project(absolute path)
-     * @param targets files that we are interested in
-     * @param routes path of file system to url
-     */
     constructor(config: Config) {
         this.config = config;
         FileTemplate.config_working_dir(this.config.working_dir);

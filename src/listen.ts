@@ -1,5 +1,5 @@
 import { Config } from './config';
-import { File, FileTree } from './file';
+import { FileTree } from './filetree';
 import * as chokidar from 'chokidar';
 import * as fs from 'fs';
 

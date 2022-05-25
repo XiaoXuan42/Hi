@@ -262,10 +262,15 @@ export class FileTree {
     }
 
     public write() {
-        // simply remove out directory to update
+        // remove all contents inside output directory except files begin with dot
         if (fs.existsSync(this.config.output_dir)) {
-            fs.rmdirSync(this.config.output_dir, { recursive: true });
-            fs.mkdirSync(this.config.output_dir, { recursive: true });
+            const files = fs.readdirSync(this.config.output_dir);
+            for (const file of files) {
+                if (file.length > 0 && file[0] !== '.') {
+                    const filepath = path.join(this.config.output_dir, file);
+                    fs.rmSync(filepath, { recursive: true });
+                }
+            }
         }
         this.write_tree(this.url_root);
     }

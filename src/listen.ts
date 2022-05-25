@@ -22,7 +22,9 @@ export class Listener {
 
     private listen_init() {
         if (!this.watcher) {
-            this.watcher = chokidar.watch(this.config.project_root_dir);
+            this.watcher = chokidar.watch(this.config.project_root_dir, {
+                ignoreInitial: true,
+            });
             this.watcher.on('change', (path, stat) => {
                 this.change_set.add(path);
             });

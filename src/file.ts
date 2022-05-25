@@ -48,8 +48,8 @@ class JinjaFile extends File {
                 result += old_content.slice(last_index, match.index);
                 const match_content = match[0];
                 let tag_content = match.input.slice(match.index + 10, match.index + match_content.length - 11);
-                tag_content = tag_content.replace('{{', "{% raw %} {{ {% endraw %}");
-                tag_content = tag_content.replace('}}', "{% raw %} }} {% endraw %}");
+                tag_content = tag_content.replace(/{{/g, "{% raw %} {{ {% endraw %}");
+                tag_content = tag_content.replace(/}}/g, "{% raw %} }} {% endraw %}");
                 const cur_mk = render_markdown(tag_content);
                 result += cur_mk;
                 last_index = match.index + match_content.length;

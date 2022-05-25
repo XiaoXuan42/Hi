@@ -31,13 +31,36 @@ export class File {
 
 class JinjaFile extends File {
     private _html: undefined | string;
+    private _converted_content: string;
     constructor(abspath: string, public content: string, public is_private: boolean) {
         super(abspath, content, is_private);
+        this._converted_content = JinjaFile.convert_mk_tag(this.content);
+    }
+
+    // convert <markdown>...</markdown> to html
+    // TODO: mangling {{ }}
+    static convert_mk_tag(old_content: string): string {
+        let mkdown_regex = /<markdown>[^]*?<\/markdown>/g;
+        let result: string = '';
+        let last_index = 0;
+        let matches = [...(old_content.matchAll(mkdown_regex))];
+        matches.forEach((match) => {
+            if (match.index && match.input) {
+                result += old_content.slice(last_index, match.index);
+                const match_content = match[0];
+                const tag_content = match.input.slice(match.index + 10, match.index + match_content.length - 11);
+                const cur_mk = render_markdown(tag_content);
+                result += cur_mk;
+                last_index = match.index + match_content.length;
+            }
+        });
+        result += old_content.slice(last_index);
+        return result;
     }
 
     output(template: FileTemplate): string {
         if (!this._html) {
-            this._html = FileTemplate.get_instantiation(this.content, {});
+            this._html = FileTemplate.get_instantiation(this._converted_content, {});
         }
         return this._html;
     }

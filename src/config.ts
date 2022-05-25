@@ -8,7 +8,7 @@ export class Config {
     readonly project_root_dir: string;  // root directory of current project, absolute path
     readonly config_path: string;
     readonly file_template_path: string;  // absolute path
-    readonly include_files: string[];
+    readonly include_files: Set<string>;
     readonly output_dir: string;
     readonly routes: {[path:string]: string};
     readonly privates: Set<string>;
@@ -32,7 +32,10 @@ export class Config {
             this.file_template_path = path.join(project_root_dir, this.file_template_path);
         }
 
-        this.include_files = yaml['include'];
+        this.include_files = new Set();
+        for (const file of yaml['include']) {
+            this.include_files.add(file);
+        }
 
         if ('outputDirectory' in yaml) {
             this.output_dir = yaml['outputDirectory'];

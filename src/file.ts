@@ -132,12 +132,16 @@ export class FileTree {
         FileTemplate.config_working_dir(this.config.project_root_dir);
         this.file_root = new DirNode();
         this.url_root = new UrlNode('');
+        let include_files: string[] = [];
+        for (let file of this.config.include_files) {
+            include_files.push(file);
+        }
         this.create_file_tree({
             filenode: this.file_root,
             urlnode: this.url_root,
             abspath: this.config.project_root_dir,
             is_private: false,
-        }, this.config.include_files);
+        }, include_files);
     }
 
     private add_file(info: NodeInfo) {
@@ -371,6 +375,12 @@ export class FileTree {
 
     on_add(abspath: string) {
         const parent_path = path.dirname(abspath);
+        if (parent_path === this.config.project_root_dir) {
+            let filename = path.basename(abspath);
+            if (!this.config.include_files.has(filename)) {
+                return;
+            }
+        }
         const find_res = this.find_by_path(parent_path);
         if (find_res) {
             if (find_res.filenode instanceof File) {

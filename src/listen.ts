@@ -1,13 +1,18 @@
 import { Config } from './config';
 import { File, FileTree } from './file';
 import * as chokidar from 'chokidar';
+import * as fs from 'fs';
 
 export class Listener {
-    dirty: Set<string>;
+    change_set: Set<string>;
+    remove_set: Set<string>;
+    add_set: Set<string>;
     watcher: chokidar.FSWatcher | undefined;
 
     constructor(public config: Config, public filetree: FileTree) {
-        this.dirty = new Set();
+        this.change_set = new Set();
+        this.remove_set = new Set();
+        this.add_set = new Set();
     }
 
     listen() {
@@ -18,16 +23,39 @@ export class Listener {
     private listen_init() {
         if (!this.watcher) {
             this.watcher = chokidar.watch(this.config.project_root_dir);
-            this.watcher.on('change', path => {
-                this.dirty.add(path);
+            this.watcher.on('change', (path, stat) => {
+                this.change_set.add(path);
+            });
+            this.watcher.on('add', path => {
+                this.add_set.add(path);
+            });
+            this.watcher.on('unlink', path => {
+                this.remove_set.add(path);
             });
         }
     }
 
     private update() {
-        for (let path of this.dirty) {
-            this.filetree.on_change(path);
+        const updated = new Set();
+        for (const abspath of this.add_set) {
+            if (fs.existsSync(abspath)) {
+                updated.add(abspath);
+                this.filetree.on_add(abspath);
+            }
         }
-        this.dirty.clear();
+        for (const abspath of this.remove_set) {
+            if (!fs.existsSync(abspath)) {
+                this.filetree.on_unlink(abspath);
+            }
+        }
+        for (const abspath of this.change_set) {
+            if (!updated.has(abspath) && fs.existsSync(abspath)) {
+                this.filetree.on_change(abspath);
+                updated.add(abspath);
+            }
+        }
+        this.add_set.clear();
+        this.remove_set.clear();
+        this.change_set.clear();
     }
 }

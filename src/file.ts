@@ -17,9 +17,13 @@ export class File {
         return this.content;
     }
 
+    convert_to_urlname(filename: string): string {
+        return filename;
+    }
+
     // get the filename of the file to be generated
     get_name(): string {
-        return this.name;
+        return this.convert_to_urlname(this.name);
     }
 
     on_change(content: string) {
@@ -40,7 +44,7 @@ class JinjaFile extends File {
         return this._html;
     }
 
-    get_name(): string {
+    convert_to_urlname(filename: string): string {
         let basename = path.basename(this.name, '.jinja');
         return basename + '.html';
     }
@@ -75,7 +79,7 @@ class MarkDownFile extends File {
         return this._html;
     }
 
-    get_name(): string {
+    convert_to_urlname(filename: string): string {
         let basename = path.basename(this.name, '.md');
         return basename + '.html';
     }
@@ -111,6 +115,13 @@ class UrlNode {
     }
 }
 
+interface NodeInfo {
+    filenode: DirNode | File;
+    urlnode: UrlNode;
+    abspath: string;
+    is_private: boolean;
+}
+
 export class FileTree {
     private file_root: DirNode;
     private url_root: UrlNode;
@@ -121,72 +132,107 @@ export class FileTree {
         FileTemplate.config_working_dir(this.config.project_root_dir);
         this.file_root = new DirNode();
         this.url_root = new UrlNode('');
-        this.create_file_tree(this.file_root, this.url_root, '', '', this.config.include_files, false);
+        this.create_file_tree({
+            filenode: this.file_root,
+            urlnode: this.url_root,
+            abspath: this.config.project_root_dir,
+            is_private: false,
+        }, this.config.include_files);
     }
 
-    private create_file_tree(file_node: DirNode, route_node: UrlNode, dirname: pathstr, url: urlstr, targets: string[], is_private: boolean) {
+    private add_file(info: NodeInfo) {
+        if (info.filenode instanceof File) {
+            throw Error("Meet some internal error when adding a new file.");
+        }
+        const content = fs.readFileSync(info.abspath).toString();
+        const filename = path.basename(info.abspath);
+        const extname = path.extname(filename);
+
+        let new_file: File;
+        if (extname === ".md") {
+            // markdown
+            new_file = new MarkDownFile(info.abspath, content, info.is_private);
+        } else if (extname === ".jinja") {
+            // jinja template converts to html
+            new_file = new JinjaFile(info.abspath, content, info.is_private);
+        } else {
+            new_file = new File(info.abspath, content, info.is_private);
+        }
+        info.filenode.files[filename] = new_file;
+
+        const new_url_name = new_file.get_name();
+        const new_url = info.urlnode.url + `/${new_url_name}`;
+        info.urlnode.suburls[new_url_name] = new UrlNode(new_url);
+        info.urlnode.suburls[new_url_name].file = new_file;
+    }
+
+    private unlink_file(info: NodeInfo) {
+        if (info.filenode instanceof File) {
+            throw Error("Meet some internal error when unlinking files.");
+        }
+        const filename = path.basename(info.abspath);
+        const file: File = info.filenode.files[filename];
+        const urlname = file.convert_to_urlname(filename);
+        delete info.filenode.files[filename];
+        delete info.urlnode.suburls[urlname];
+    }
+
+    private create_file_tree(info: NodeInfo, targets: string[]) {
+        if (info.filenode instanceof File) {
+            throw Error("Meet some internal error when creating file tree.");
+        }
+
         for (let target of targets) {
-            let filepath = path.join(this.config.project_root_dir, dirname, target);
-            let next_dirname = dirname + `/${target}`;
-            let next_url: urlstr = url + `/${target}`;
-            let file_is_private = is_private;
-            if (this.config.privates.has(next_dirname)) {
-                file_is_private = true;
+            let next_abspath = path.join(info.abspath, target);
+            let next_url: urlstr = info.urlnode.url + `/${target}`;
+            let next_is_private = info.is_private;
+            let next_relpath = this.get_relpath(next_abspath);
+            if (this.config.privates.has(next_relpath)) {
+                next_is_private = true;
             }
 
-            if (fs.lstatSync(filepath).isFile()) {
-                if (target in route_node.suburls) {
-                    throw Error(`Url ${url} conflicts.`);
+            if (fs.lstatSync(next_abspath).isFile()) {
+                if (target in info.urlnode.suburls) {
+                    throw Error(`Url ${info.urlnode.url} conflicts.`);
                 }
+                this.add_file({
+                    filenode: info.filenode,
+                    urlnode: info.urlnode,
+                    abspath: next_abspath,
+                    is_private: next_is_private
+                });
+            } else if (fs.lstatSync(next_abspath).isDirectory()) {
+                // read all files inside directories
+                let next_targets: string[] = fs.readdirSync(next_abspath);
+                let next_filenode: DirNode = new DirNode();
+                info.filenode.subdirs[target] = next_filenode;
 
-                // read file content
-                let content = fs.readFileSync(filepath).toString();
-                let extname = path.extname(target);
-                let new_file: File;
-                if (extname === ".md") {
-                    // markdown
-                    new_file = new MarkDownFile(filepath, content, file_is_private);
-                } else if (extname === ".jinja") {
-                    // jinja template converts to html
-                    new_file = new JinjaFile(filepath, content, file_is_private);
+                let next_urlnode: UrlNode = new UrlNode(next_url);
+                if (next_url in this.config.routes) {
+                    next_url = this.config.routes[next_url];
+                    let tmp_router = this.access_by_url(next_url.split('/'));
+                    if (tmp_router instanceof File) {
+                        throw Error(`Url ${next_url} can't be a directory and a file at the same time`);
+                    }
+                    next_urlnode = tmp_router;
+                    info.urlnode.suburls[target] = next_urlnode;
                 } else {
-                    new_file = new File(filepath, content, file_is_private);
-                }
-                file_node.files[target] = new_file;
-
-                const new_url_name = new_file.get_name();
-                next_url = url + `/${new_url_name}`;
-                route_node.suburls[new_url_name] = new UrlNode(next_url);
-                route_node.suburls[new_url_name].file = new_file;
-            } else {
-                if (fs.lstatSync(filepath).isDirectory()) {
-                    // read all files inside directories
-                    let next_targets: string[] = fs.readdirSync(filepath);
-                    let next_dir: DirNode = new DirNode();
-                    file_node.subdirs[target] = next_dir;
-
-                    let next_router: UrlNode = new UrlNode(next_url);
-                    if (next_url in this.config.routes) {
-                        next_url = this.config.routes[next_url];
-                        let tmp_router = this.access_by_url(next_url.split('/'));
-                        if (tmp_router instanceof File) {
+                    if (target in info.urlnode.suburls) {
+                        let cur_suburl = info.urlnode.suburls[target];
+                        if (cur_suburl instanceof File) {
                             throw Error(`Url ${next_url} can't be a directory and a file at the same time`);
                         }
-                        next_router = tmp_router;
-                        route_node.suburls[target] = next_router;
+                        next_urlnode = cur_suburl;
                     } else {
-                        if (target in route_node.suburls) {
-                            let cur_suburl = route_node.suburls[target];
-                            if (cur_suburl instanceof File) {
-                                throw Error(`Url ${next_url} can't be a directory and a file at the same time`);
-                            }
-                            next_router = cur_suburl;
-                        } else {
-                            route_node.suburls[target] = next_router;
-                        }
+                        info.urlnode.suburls[target] = next_urlnode;
                     }
-                    this.create_file_tree(next_dir, next_router, next_dirname, next_url, next_targets, file_is_private);
                 }
+                this.create_file_tree({
+                    filenode: next_filenode,
+                    urlnode: next_urlnode,
+                    abspath: next_abspath,
+                    is_private: next_is_private
+                }, next_targets);
             }
         }
     }
@@ -230,30 +276,50 @@ export class FileTree {
         }
     }
 
+    private get_relpath(abspath: string): string {
+        const relpath = path.relative(this.config.project_root_dir, abspath).replace(path.sep, '/');
+        if (relpath[0] !== '/') {
+            return '/' + relpath;
+        }
+        return relpath;
+    }
+
     private get_relpath_array(abspath: string): string[] {
         const relpath = path.relative(this.config.project_root_dir, abspath);
         return relpath.split(path.sep).filter(s => s);
     }
 
-    private find_by_path(abspath: string): [urlstr, File|DirNode] | undefined {
+    private find_by_path(abspath: string): NodeInfo | undefined {
         const relpath_array = this.get_relpath_array(abspath);
-        let file_node: DirNode | File = this.file_root;
-        let url_node: UrlNode = this.url_root;
+        let relpath = '';
+        let filenode: DirNode | File = this.file_root;
+        let urlnode: UrlNode = this.url_root;
+        let is_private = false;
+
         for (const filename of relpath_array) {
-            if (file_node instanceof File || url_node.file) {
+            if (filenode instanceof File || urlnode.file) {
                 return undefined;
             }
-            if (filename in file_node.subdirs) {
-                file_node = file_node.subdirs[filename];
-                url_node = url_node.suburls[filename];
-            } else if(filename in file_node.files) {
-                file_node = file_node.files[filename];
-                url_node = url_node.suburls[file_node.get_name()];
+            relpath = relpath + `/${filename}`;
+            if (this.config.privates.has(relpath)) {
+                is_private = true;
+            }
+            if (filename in filenode.subdirs) {
+                filenode = filenode.subdirs[filename];
+                urlnode = urlnode.suburls[filename];
+            } else if(filename in filenode.files) {
+                filenode = filenode.files[filename];
+                urlnode = urlnode.suburls[filenode.get_name()];
             } else {
                 return undefined;
             }
         }
-        return [url_node.url, file_node];
+        return {
+            filenode: filenode,
+            urlnode: urlnode,
+            abspath: abspath,
+            is_private: is_private
+        };
     }
 
     // return the relative path to the target file.
@@ -295,12 +361,35 @@ export class FileTree {
     on_change(abspath: string) {
         const find_res = this.find_by_path(abspath);
         if (find_res) {
-            const [url, node] = find_res;
-            if (node instanceof File) {
+            if (find_res.filenode instanceof File) {
                 const content = fs.readFileSync(abspath).toString();
-                node.on_change(content);
-                this.output_file(url, node);
+                find_res.filenode.on_change(content);
+                this.output_file(find_res.urlnode.url, find_res.filenode);
             }
+        }
+    }
+
+    on_add(abspath: string) {
+        const parent_path = path.dirname(abspath);
+        const find_res = this.find_by_path(parent_path);
+        if (find_res) {
+            if (find_res.filenode instanceof File) {
+                throw Error(`Failed to add ${abspath}`);
+            }
+            find_res.abspath = abspath;
+            this.add_file(find_res);
+        }
+    }
+
+    on_unlink(abspath: string) {
+        const parent_path = path.dirname(abspath);
+        const find_res = this.find_by_path(parent_path);
+        if (find_res) {
+            if (find_res.filenode instanceof File) {
+                throw Error(`Failed to unlink ${abspath}`);
+            }
+            find_res.abspath = abspath;  // switch the path to unlink the file rather than directory
+            this.unlink_file(find_res);
         }
     }
 

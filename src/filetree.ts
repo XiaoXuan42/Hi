@@ -259,7 +259,8 @@ export class FileTree {
         if (file.is_private) {
             // encrypt the content of file
             output_content = encrypt(output_content, this.config.passwd);
-            output_content = FileTemplate.get_instantiation(this.config.file_template.private_template, { ciphertext: output_content, private_scripts: get_private_scripts() });
+            const output_tag = `<p id="ciphertext" hidden>${output_content}</p>`;
+            output_content = FileTemplate.get_instantiation(this.config.file_template.private_template, { ciphertext: output_tag, private_scripts: get_private_scripts() });
         }
         fs.writeFileSync(output_path, output_content);
     }

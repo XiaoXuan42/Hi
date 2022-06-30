@@ -1,4 +1,4 @@
-import { FileTree } from './filetree/filetree';
+import { FileTree } from './fs/filetree';
 import * as http from 'http';
 
 export class Server {
@@ -9,7 +9,7 @@ export class Server {
         const port = 8080;
         this.server = http.createServer((req, res) => {
             if (req.url) {
-                const content = this.filetree.get_by_url(req.url);
+                const content = this.filetree.get_result_content(req.url);
                 if (content) {
                     res.writeHead(200);
                     res.end(content);

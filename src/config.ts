@@ -14,6 +14,7 @@ export class Config {
     readonly privates: Set<string>;
     readonly file_template: FileTemplate;
     readonly passwd: string;
+    readonly meta: object;
 
     /**
      * Configuration of the project
@@ -64,5 +65,11 @@ export class Config {
 
         this.file_template = new FileTemplate(this.file_template_path);
         this.passwd = yaml['passwd'];
+
+        if ('meta' in yaml) {
+            this.meta = yaml['meta'];
+        } else {
+            this.meta = {};
+        }
     }
 }

@@ -1,5 +1,6 @@
 import { Config } from './config';
-import { FileTree } from './filetree/filetree';
+import { FileTree } from './fs/filetree';
+import { Converter } from './converter';
 import * as chokidar from 'chokidar';
 import * as fs from 'fs';
 
@@ -9,7 +10,7 @@ export class Listener {
     add_set: Set<string>;
     watcher: chokidar.FSWatcher | undefined;
 
-    constructor(public config: Config, public filetree: FileTree) {
+    constructor(public config: Config, public filetree: FileTree, public converter: Converter) {
         this.change_set = new Set();
         this.remove_set = new Set();
         this.add_set = new Set();
@@ -42,7 +43,7 @@ export class Listener {
         for (const abspath of this.add_set) {
             if (fs.existsSync(abspath)) {
                 updated.add(abspath);
-                this.filetree.on_add(abspath);
+                this.filetree.on_add(abspath, this.converter.convert.bind(this.converter));
             }
         }
         for (const abspath of this.remove_set) {
@@ -52,7 +53,7 @@ export class Listener {
         }
         for (const abspath of this.change_set) {
             if (!updated.has(abspath) && fs.existsSync(abspath)) {
-                this.filetree.on_change(abspath);
+                this.filetree.on_change(abspath, this.converter.convert.bind(this.converter));
                 updated.add(abspath);
             }
         }

@@ -1,10 +1,11 @@
 import { Config } from '../config';
-import { File, generate_file } from '../file';
+import { generate_file } from './file';
 import { FileTemplate } from '../template';
 import { encrypt, get_private_scripts } from '../private';
-import { DirNode, UrlNode, urlstr, NodeInfo } from './basic';
+import { File, DirNode, UrlNode, urlstr, NodeInfo } from './basic';
 import * as fs from 'fs';
 import * as path from 'path';
+import { assert } from 'console';
 
 export class FileTree {
     private file_root: DirNode;
@@ -28,19 +29,18 @@ export class FileTree {
         }, include_files);
     }
 
-    public get_url_root(): UrlNode {
-        return this.url_root;
-    }
-
-    private add_file(info: NodeInfo) {
+    // info represents information about the parent directory
+    private add_file(info: NodeInfo): UrlNode {
         if (info.filenode instanceof File) {
             throw Error("Meet some internal error when adding a new file.");
         }
         let new_file: File = generate_file(info.abspath, info.is_private);
         const new_url_name = new_file.get_name();
         const new_url = info.urlnode.url + `/${new_url_name}`;
-        info.urlnode.suburls[new_url_name] = new UrlNode(new_url);
-        info.urlnode.suburls[new_url_name].file = new_file;
+        let new_urlnode = new UrlNode(new_url);
+        new_urlnode.file = new_file;
+        info.urlnode.suburls[new_url_name] = new_urlnode;
+        return new_urlnode;
     }
 
     private unlink_file(info: NodeInfo) {
@@ -134,30 +134,6 @@ export class FileTree {
         return cur;
     }
 
-    public write() {
-        // remove all contents inside output directory except files begin with dot
-        if (fs.existsSync(this.config.output_dir)) {
-            const files = fs.readdirSync(this.config.output_dir);
-            for (const file of files) {
-                if (file.length > 0 && file[0] !== '.') {
-                    const filepath = path.join(this.config.output_dir, file);
-                    fs.rmSync(filepath, { recursive: true });
-                }
-            }
-        }
-        this.write_tree(this.url_root);
-    }
-
-    private write_tree(node: UrlNode) {
-        if (node.file) {
-            this.output_file(node.url, node.file);
-        } else {
-            for (const name in node.suburls) {
-                this.write_tree(node.suburls[name]);
-            }
-        }
-    }
-
     private get_relpath(abspath: string): string {
         const relpath = path.relative(this.config.project_root_dir, abspath).replace(path.sep, '/');
         if (relpath[0] !== '/') {
@@ -223,7 +199,7 @@ export class FileTree {
         return [target_path, url_node.file];
     }
 
-    private output_file(url: urlstr, file: File) {
+    private output_file(url: urlstr, file: File, content: string) {
         const parent_url = url.slice(0, url.lastIndexOf('/'));
         const parent_path = parent_url.replace('/', path.sep);
         const dirpath = path.join(this.config.output_dir, parent_path);
@@ -231,28 +207,43 @@ export class FileTree {
             fs.mkdirSync(dirpath, { recursive: true });
         }
         const output_path = path.join(this.config.output_dir, parent_path, file.get_name());
-        let output_content = file.output(this.config.file_template);
         if (file.is_private) {
             // encrypt the content of file
-            output_content = encrypt(output_content, this.config.passwd);
-            const output_tag = `<p id="ciphertext" hidden>${output_content}</p>`;
-            output_content = FileTemplate.get_instantiation(this.config.file_template.private_template, { ciphertext: output_tag, private_scripts: get_private_scripts() }, "jinja");
+            content = encrypt(content, this.config.passwd);
+            const output_tag = `<p id="ciphertext" hidden>${content}</p>`;
+            content = FileTemplate.get_instantiation(this.config.file_template.private_template, { ciphertext: output_tag, private_scripts: get_private_scripts() }, "jinja");
         }
-        fs.writeFileSync(output_path, output_content);
+        fs.writeFileSync(output_path, content);
     }
 
-    on_change(abspath: string) {
+    private _visit_url(node: UrlNode, callback: (urlnode: UrlNode, f: File) => any, response: (urlnode: UrlNode, res: any) => any) {
+        if (node.file) {
+            let res = callback(node, node.file);
+            return response(node, res);
+        } else {
+            Object.entries(node.suburls).forEach(([key, value]) => {
+                this._visit_url(value, callback, response);
+            });
+        }
+    }
+
+    private visit_url(callback: (urlnode: UrlNode, f: File) => any, response: (urlnode: UrlNode, res: any) => any) {
+        this._visit_url(this.url_root, callback, response);
+    }
+
+    public on_change(abspath: string, converter: (urlnode: UrlNode, f: File) => string) {
         const find_res = this.find_by_path(abspath);
         if (find_res) {
             if (find_res.filenode instanceof File) {
                 const content = fs.readFileSync(abspath).toString();
                 find_res.filenode.on_change(content);
-                this.output_file(find_res.urlnode.url, find_res.filenode);
+                const output_content = converter(find_res.urlnode, find_res.filenode);
+                this.output_file(find_res.urlnode.url, find_res.filenode, output_content);
             }
         }
     }
 
-    on_add(abspath: string) {
+    public on_add(abspath: string, converter: (urlnode: UrlNode, f: File) => string) {
         const parent_path = path.dirname(abspath);
         if (parent_path === this.config.project_root_dir) {
             let filename = path.basename(abspath);
@@ -266,11 +257,16 @@ export class FileTree {
                 throw Error(`Failed to add ${abspath}`);
             }
             find_res.abspath = abspath;
-            this.add_file(find_res);
+            const new_urlnode = this.add_file(find_res);
+            assert(new_urlnode.file);
+            if (new_urlnode.file) {
+                const new_content = converter(new_urlnode, new_urlnode.file);
+                this.output_file(new_urlnode.url, new_urlnode.file, new_content);
+            }
         }
     }
 
-    on_unlink(abspath: string) {
+    public on_unlink(abspath: string) {
         const parent_path = path.dirname(abspath);
         const find_res = this.find_by_path(parent_path);
         if (find_res) {
@@ -282,28 +278,32 @@ export class FileTree {
         }
     }
 
-    get_by_url(url: urlstr): string | undefined {
+    public write(converter: (urlnode: UrlNode, f: File) => string) {
+        // remove all contents inside output directory except files begin with dot
+        if (fs.existsSync(this.config.output_dir)) {
+            const files = fs.readdirSync(this.config.output_dir);
+            for (const file of files) {
+                if (file.length > 0 && file[0] !== '.') {
+                    const filepath = path.join(this.config.output_dir, file);
+                    fs.rmSync(filepath, { recursive: true });
+                }
+            }
+        }
+        this.visit_url(converter, (node, res: string) => {
+            assert(node.file && res);
+            if (node.file) {
+                this.output_file(node.url, node.file, res);
+            }
+        });
+    }
+
+    public get_result_content(url: urlstr): string | undefined {
         const find_res = this.find_by_url(url);
         if (find_res) {
             const [target_path, file] = find_res;
             return fs.readFileSync(target_path).toString();
         } else {
             return undefined;
-        }
-    }
-
-    visit(callback: (f: File) => any) {
-        this._visit(this.file_root, callback);
-    }
-
-    private _visit(node: DirNode, callback: (f: File) => any) {
-        for (const filename in node.files) {
-            const file = node.files[filename];
-            callback(file);
-        }
-        for (const dirname in node.subdirs) {
-            const dir = node.subdirs[dirname];
-            this._visit(dir, callback);
         }
     }
 }

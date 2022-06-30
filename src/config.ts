@@ -18,7 +18,6 @@ export class Config {
     /**
      * Configuration of the project
      * @param project_root_dir root directory of the project, absolute path
-     * @param yaml configurations
      */
     constructor(project_root_dir: string) {
         this.project_root_dir = project_root_dir;
@@ -27,16 +26,19 @@ export class Config {
         this.config_path = path.join(project_root_dir, 'config.yml');
         const yaml = YAML.parse(fs.readFileSync(this.config_path, 'utf-8'));
 
+        // fileTemplatePath
         this.file_template_path = yaml['fileTemplatePath'];
         if (!path.isAbsolute(this.file_template_path)) {
             this.file_template_path = path.join(project_root_dir, this.file_template_path);
         }
 
+        // include
         this.include_files = new Set();
         for (const file of yaml['include']) {
             this.include_files.add(file);
         }
 
+        // outputDirectory
         if ('outputDirectory' in yaml) {
             this.output_dir = yaml['outputDirectory'];
         } else {
@@ -46,11 +48,13 @@ export class Config {
             this.output_dir = path.join(project_root_dir, this.output_dir);
         }
         
+        // routes
         this.routes = {};
         if ('routes' in yaml) {
             this.routes = yaml['routes'];
         }
 
+        // privates
         this.privates = new Set<string>();
         if ('privates' in yaml) {
             for (let file of yaml['privates']) {

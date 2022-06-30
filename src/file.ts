@@ -15,13 +15,13 @@ export class File {
         return this.content;
     }
 
-    convert_to_urlname(filename: string): string {
-        return filename;
+    convert_to_urlname(): string {
+        return this.name;
     }
 
     // get the filename of the file to be generated
     get_name(): string {
-        return this.convert_to_urlname(this.name);
+        return this.convert_to_urlname();
     }
 
     on_change(content: string) {
@@ -64,18 +64,19 @@ class JinjaFile extends File {
 
     output(template: FileTemplate): string {
         if (!this._html) {
-            this._html = FileTemplate.get_instantiation(this._converted_content, {});
+            this._html = FileTemplate.get_instantiation(this._converted_content, {}, "jinja");
         }
         return this._html;
     }
 
-    convert_to_urlname(filename: string): string {
+    convert_to_urlname(): string {
         let basename = path.basename(this.name, '.jinja');
         return basename + '.html';
     }
 
     on_change(content: string): void {
         super.on_change(content);
+        this._converted_content = JinjaFile.convert_mk_tag(this.content);
         this._html = undefined;
     }
 }
@@ -99,12 +100,12 @@ class MarkDownFile extends File {
 
     output(template: FileTemplate): string {
         if (!this._html) {
-            this._html = FileTemplate.get_instantiation(template.markdown_template, { markdown: this });
+            this._html = FileTemplate.get_instantiation(template.markdown_template, { markdown: this }, "jinja");
         }
         return this._html;
     }
 
-    convert_to_urlname(filename: string): string {
+    convert_to_urlname(): string {
         let basename = path.basename(this.name, '.md');
         return basename + '.html';
     }
@@ -117,6 +118,31 @@ class MarkDownFile extends File {
     }
 }
 
+class PugFile extends File {
+    private _html: undefined | string;
+    
+    constructor(abspath: string, public content: string, public is_private: boolean) {
+        super(abspath, content, is_private);
+    }
+
+    output(template: FileTemplate): string {
+        if (!this._html) {
+            this._html = FileTemplate.get_instantiation(this.content, {}, "pug");
+        }
+        return this._html;
+    }
+
+    convert_to_urlname(): string {
+        let basename = path.basename(this.name, ".pug");
+        return basename + '.html';
+    }
+
+    on_change(content: string): void {
+        super.on_change(content);
+        this._html = undefined;
+    }
+}
+
 export function generate_file(abspath: string, is_private: boolean): File {
     const content = fs.readFileSync(abspath).toString();
     const filename = path.basename(abspath);
@@ -124,11 +150,11 @@ export function generate_file(abspath: string, is_private: boolean): File {
 
     let new_file: File;
     if (extname === ".md") {
-        // markdown
         new_file = new MarkDownFile(abspath, content, is_private);
     } else if (extname === ".jinja") {
-        // jinja template converts to html
         new_file = new JinjaFile(abspath, content, is_private);
+    } else if (extname === ".pug") {
+        new_file = new PugFile(abspath, content, is_private);
     } else {
         new_file = new File(abspath, content, is_private);
     }

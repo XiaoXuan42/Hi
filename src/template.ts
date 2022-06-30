@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as nunjucks from 'nunjucks';
+import * as pug from 'pug'
 
 export class FileTemplate {
     readonly markdown_template: string;
@@ -13,8 +14,14 @@ export class FileTemplate {
         this.private_template = fs.readFileSync(private_file).toString();
     }
 
-    static get_instantiation(template: string, context: object): string {
-        return nunjucks.renderString(template, context);
+    static get_instantiation(template: string, context: object, template_type: string): string {
+        if (template_type === "jinja") {
+            return nunjucks.renderString(template, context);
+        } else if (template_type === "pug") {
+            return pug.render(template);
+        } else {
+            throw Error(`Template ${template_type} is not supported.`);
+        }
     }
 
     static config_working_dir(working_dir: string) {

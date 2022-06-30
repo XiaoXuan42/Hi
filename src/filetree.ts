@@ -73,7 +73,7 @@ export class FileTree {
         }
         const filename = path.basename(info.abspath);
         const file: File = info.filenode.files[filename];
-        const urlname = file.convert_to_urlname(filename);
+        const urlname = file.convert_to_urlname();
         delete info.filenode.files[filename];
         delete info.urlnode.suburls[urlname];
     }
@@ -260,7 +260,7 @@ export class FileTree {
             // encrypt the content of file
             output_content = encrypt(output_content, this.config.passwd);
             const output_tag = `<p id="ciphertext" hidden>${output_content}</p>`;
-            output_content = FileTemplate.get_instantiation(this.config.file_template.private_template, { ciphertext: output_tag, private_scripts: get_private_scripts() });
+            output_content = FileTemplate.get_instantiation(this.config.file_template.private_template, { ciphertext: output_tag, private_scripts: get_private_scripts() }, "jinja");
         }
         fs.writeFileSync(output_path, output_content);
     }

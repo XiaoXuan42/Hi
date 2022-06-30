@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "description": "",
   "main": "out/index.js",
+  "bin": {
+    "Hi": "bin/Hi"
+  },
   "scripts": {},
   "author": "",
   "license": "MIT",

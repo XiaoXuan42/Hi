@@ -5,3 +5,5 @@ examples/
 out/
 .vscode/
 default/
+bin/
+*.tgz

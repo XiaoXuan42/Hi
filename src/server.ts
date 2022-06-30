@@ -1,4 +1,4 @@
-import { FileTree } from './filetree';
+import { FileTree } from './filetree/filetree';
 import * as http from 'http';
 
 export class Server {

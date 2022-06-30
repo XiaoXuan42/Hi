@@ -3,6 +3,12 @@ import * as path from 'path';
 import { render_markdown } from './markdown';
 import { FileTemplate } from './template';
 
+const katex_css = String.raw`<link rel="stylesheet" 
+href="https://cdn.jsdelivr.net/npm/katex@0.15.6/dist/katex.min.css"
+integrity="sha384-ZPe7yZ91iWxYumsBEOn7ieg8q/o+qh/hQpSaPow8T6BwALcXSCS6C6fSRPIAnTQs" crossorigin="anonymous">`;
+const highlight_css = String.raw`<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">`;
+const mk_stylesheet = [katex_css, highlight_css].join('\n');
+
 export class File {
     name: string;
 
@@ -32,9 +38,11 @@ export class File {
 class JinjaFile extends File {
     private _html: undefined | string;
     private _converted_content: string;
+    stylesheet: string;
     constructor(abspath: string, public content: string, public is_private: boolean) {
         super(abspath, content, is_private);
         this._converted_content = JinjaFile.convert_mk_tag(this.content);
+        this.stylesheet = mk_stylesheet;
     }
 
     // convert <markdown>...</markdown> to html
@@ -54,7 +62,7 @@ class JinjaFile extends File {
                 tag_content = tag_content.replace(/{{/g, "{% raw %} {{ {% endraw %}");
                 tag_content = tag_content.replace(/}}/g, "{% raw %} }} {% endraw %}");
                 const cur_mk = render_markdown(tag_content);
-                result += cur_mk;
+                result += `<div class="markdown">${cur_mk}</div>`;
                 last_index = match.index + match_content.length;
             }
         });
@@ -64,7 +72,7 @@ class JinjaFile extends File {
 
     output(template: FileTemplate): string {
         if (!this._html) {
-            this._html = FileTemplate.get_instantiation(this._converted_content, {}, "jinja");
+            this._html = FileTemplate.get_instantiation(this._converted_content, { jinja: this }, "jinja");
         }
         return this._html;
     }
@@ -78,6 +86,7 @@ class JinjaFile extends File {
         super.on_change(content);
         this._converted_content = JinjaFile.convert_mk_tag(this.content);
         this._html = undefined;
+        this.stylesheet = mk_stylesheet;
     }
 }
 
@@ -86,16 +95,10 @@ class MarkDownFile extends File {
     stylesheet: string;
     private _html: string | undefined;
 
-    static readonly katex_css = String.raw`<link rel="stylesheet" 
-    href="https://cdn.jsdelivr.net/npm/katex@0.15.6/dist/katex.min.css"
-    integrity="sha384-ZPe7yZ91iWxYumsBEOn7ieg8q/o+qh/hQpSaPow8T6BwALcXSCS6C6file_rootRPIAnTQs" crossorigin="anonymous">`;
-    static readonly highlight_css = String.raw`<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">`;
-    static readonly mk_stylesheet = [MarkDownFile.katex_css, MarkDownFile.highlight_css].join('\n');
-
     constructor(abspath: string, public content: string, public is_private: boolean) {
         super(abspath, content, is_private);
-        this.html = render_markdown(content);
-        this.stylesheet = MarkDownFile.mk_stylesheet;
+        this.html = `<div class="markdown">${render_markdown(content)}</div>`;
+        this.stylesheet = mk_stylesheet;
     }
 
     output(template: FileTemplate): string {
@@ -113,7 +116,7 @@ class MarkDownFile extends File {
     on_change(content: string): void {
         super.on_change(content);
         this.html = render_markdown(content);
-        this.stylesheet = MarkDownFile.mk_stylesheet;
+        this.stylesheet = mk_stylesheet;
         this._html = undefined;
     }
 }

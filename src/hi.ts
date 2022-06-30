@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as process from 'process';
 import { Config } from './config';
-import { FileTree } from './filetree';
+import { FileTree } from './filetree/filetree';
 import { Listener } from './listen';
 import { Server } from './server';
 

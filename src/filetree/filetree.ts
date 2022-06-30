@@ -1,38 +1,10 @@
-import { Config } from './config';
-import { File, generate_file } from './file';
-import { FileTemplate } from './template';
-import { encrypt, get_private_scripts } from './private';
+import { Config } from '../config';
+import { File, generate_file } from '../file';
+import { FileTemplate } from '../template';
+import { encrypt, get_private_scripts } from '../private';
+import { DirNode, UrlNode, urlstr, NodeInfo } from './basic';
 import * as fs from 'fs';
 import * as path from 'path';
-
-type pathstr = string;
-type urlstr = string;
-class DirNode {
-    files: {[name: string]: File};
-    subdirs: {[name: string]: DirNode};
-
-    constructor() {
-        this.files = {};
-        this.subdirs = {};
-    }
-}
-
-class UrlNode {
-    url: urlstr;
-    suburls: {[name: string]: UrlNode};
-    file: File | undefined;
-    constructor(url: urlstr) {
-        this.url = url;
-        this.suburls = {};
-    }
-}
-
-interface NodeInfo {
-    filenode: DirNode | File;
-    urlnode: UrlNode;
-    abspath: string;
-    is_private: boolean;
-}
 
 export class FileTree {
     private file_root: DirNode;
@@ -54,6 +26,10 @@ export class FileTree {
             abspath: this.config.project_root_dir,
             is_private: false,
         }, include_files);
+    }
+
+    public get_url_root(): UrlNode {
+        return this.url_root;
     }
 
     private add_file(info: NodeInfo) {

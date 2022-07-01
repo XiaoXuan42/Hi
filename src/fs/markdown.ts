@@ -18,8 +18,19 @@ export class MarkDownFile extends File {
         super(abspath, parent_url, content, is_private);
         this.html = '';
         this.stylesheet = '';
+        this.date = new Date();
+        this.title = '';
+        this.description = '';
         this.configure_from_content();
-        
+    }
+
+    private configure_from_content() {
+        const fm_res = fm.default(this.content);
+        this.front_matter = fm_res.attributes;
+        this.html = `<div class="markdown">${render_markdown(fm_res.body)}</div>`;
+        this.stylesheet = mk_stylesheet;
+        this._html = undefined;
+                
         if ('date' in this.front_matter) {
             this.date = new Date(this.front_matter.date);
         } else {
@@ -36,14 +47,6 @@ export class MarkDownFile extends File {
         } else {
             this.description = 'No description';
         }
-    }
-
-    private configure_from_content() {
-        const fm_res = fm.default(this.content);
-        this.front_matter = fm_res.attributes;
-        this.html = `<div class="markdown">${render_markdown(fm_res.body)}</div>`;
-        this.stylesheet = mk_stylesheet;
-        this._html = undefined;
     }
 
     output(template: FileTemplate, context: any): string {

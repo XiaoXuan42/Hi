@@ -13,7 +13,7 @@ export class File {
     protected name: string;
     protected url: urlstr;
 
-    constructor(abspath: string, parent_url: urlstr, public content: string, public is_private: boolean) {
+    constructor(public abspath: string, parent_url: urlstr, public content: string, public is_private: boolean) {
         this.name = path.basename(abspath);
         this.url = `${parent_url}/${this.get_name()}`;
     }

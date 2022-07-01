@@ -1,13 +1,17 @@
 import * as path from 'path';
+import * as fs from 'fs';
 import { FileTemplate } from '../template';
 import { mk_stylesheet, File, urlstr } from './basic';
 import { render_markdown } from '../markdown';
 import * as fm from 'front-matter';
 
 export class MarkDownFile extends File {
-    html: string;
-    stylesheet: string;
-    front_matter: any;
+    public html: string;
+    public stylesheet: string;
+    public front_matter: any;
+    public date: Date;
+    public title: string;
+    public description: string;
     private _html: string | undefined;
 
     constructor(abspath: string, parent_url: urlstr, content: string, is_private: boolean) {
@@ -15,6 +19,23 @@ export class MarkDownFile extends File {
         this.html = '';
         this.stylesheet = '';
         this.configure_from_content();
+        
+        if ('date' in this.front_matter) {
+            this.date = new Date(this.front_matter.date);
+        } else {
+            const stat = fs.statSync(this.abspath);
+            this.date = stat.mtime;
+        }
+        if ('title' in this.front_matter) {
+            this.title = this.front_matter.title;
+        } else {
+            this.title = 'MarkDown Document';
+        }
+        if ('description' in this.front_matter) {
+            this.description = this.front_matter.description;
+        } else {
+            this.description = 'No description';
+        }
     }
 
     private configure_from_content() {

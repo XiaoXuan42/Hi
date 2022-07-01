@@ -8,7 +8,7 @@ export class MarkDownFile extends File {
     stylesheet: string;
     private _html: string | undefined;
 
-    constructor(abspath: string, public content: string, public is_private: boolean) {
+    constructor(abspath: string, content: string, is_private: boolean) {
         super(abspath, content, is_private);
         this.html = `<div class="markdown">${render_markdown(content)}</div>`;
         this.stylesheet = mk_stylesheet;

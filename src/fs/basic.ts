@@ -8,28 +8,32 @@ const highlight_css = String.raw`<link rel="stylesheet" href="https://cdnjs.clou
 export const mk_stylesheet = [katex_css, highlight_css].join('\n');
 
 export class File {
-    name: string;
+    protected name: string;
 
     constructor(abspath: string, public content: string, public is_private: boolean) {
         this.name = path.basename(abspath);
     }
 
     // the content of the file to be generated
-    output(template: FileTemplate, context: any): string {
+    public output(template: FileTemplate, context: any): string {
         return this.content;
     }
 
-    convert_to_urlname(): string {
+    public convert_to_urlname(): string {
         return this.name;
     }
 
     // get the filename of the file to be generated
-    get_name(): string {
+    public get_name(): string {
         return this.convert_to_urlname();
     }
 
-    on_change(content: string) {
+    public on_change(content: string) {
         this.content = content;
+    }
+
+    public get_class_name(): string {
+        return this.constructor.name;
     }
 }
 

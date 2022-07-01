@@ -306,4 +306,62 @@ export class FileTree {
             return undefined;
         }
     }
+
+    // * matches any single directory name or an empty.
+    // ** matches any directory names or empties.
+    public search_by_url_pattern(url_pattern: urlstr): File[] {
+        const url_array = url_pattern.split('/').filter(s => s);
+        let queue = [{node: this.url_root, index: 0}];
+        let file_set: Set<File> = new Set();
+        let result: File[] = [];
+        while (true) {
+            const state = queue.shift();
+            if (!state) {
+                break;
+            }
+            const node = state.node;
+            const index = state.index;
+            if (index >= url_array.length) {
+                continue;
+            }
+            const cur_pattern = url_array[index];
+
+            // case1: reach end
+            if (index + 1 === url_array.length) {
+                if (node.file) {
+                    if (!file_set.has(node.file)) {
+                        file_set.add(node.file);
+                        result.push(node.file);
+                    }
+                    continue;
+                } else if (cur_pattern === '**') {
+                    Object.entries(node.suburls).forEach(([_, value]) => {
+                        queue.push({node: value, index: index});
+                    })
+                }
+                continue;
+            }
+            // case2
+            if (cur_pattern === '*') {
+                Object.entries(node.suburls).forEach(([_, value]) => {
+                    queue.push({node: value, index: index + 1});
+                });
+                queue.push({node: node, index: index + 1});  // match empty
+            } else if (cur_pattern === '**') {
+                Object.entries(node.suburls).forEach(([_, value]) => {
+                    queue.push({node: value, index: index});
+                    queue.push({node: value, index: index + 1});
+                });
+                queue.push({node: node, index: index + 1});
+            } else {
+                let re = new RegExp(`^${cur_pattern}$`);
+                Object.entries(node.suburls).forEach(([key, value]) => {
+                    if (re.test(key)) {
+                        queue.push({node: value, index: index + 1});
+                    }
+                });
+            }
+        }
+        return result;
+    }
 }

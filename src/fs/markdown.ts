@@ -2,16 +2,27 @@ import * as path from 'path';
 import { FileTemplate } from '../template';
 import { mk_stylesheet, File } from './basic';
 import { render_markdown } from '../markdown';
+import * as fm from 'front-matter';
 
 export class MarkDownFile extends File {
     html: string;
     stylesheet: string;
+    front_matter: any;
     private _html: string | undefined;
 
     constructor(abspath: string, content: string, is_private: boolean) {
         super(abspath, content, is_private);
-        this.html = `<div class="markdown">${render_markdown(content)}</div>`;
+        this.html = '';
+        this.stylesheet = '';
+        this.configure_from_content();
+    }
+
+    private configure_from_content() {
+        const fm_res = fm.default(this.content);
+        this.front_matter = fm_res.attributes;
+        this.html = `<div class="markdown">${render_markdown(fm_res.body)}</div>`;
         this.stylesheet = mk_stylesheet;
+        this._html = undefined;
     }
 
     output(template: FileTemplate, context: any): string {
@@ -32,8 +43,6 @@ export class MarkDownFile extends File {
 
     on_change(content: string): void {
         super.on_change(content);
-        this.html = render_markdown(content);
-        this.stylesheet = mk_stylesheet;
-        this._html = undefined;
+        this.configure_from_content();
     }
 }

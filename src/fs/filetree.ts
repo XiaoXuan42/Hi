@@ -35,11 +35,14 @@ export class FileTree {
             throw Error("Meet some internal error when adding a new file.");
         }
         let new_file: File = generate_file(info.abspath, info.is_private);
+
         const new_url_name = new_file.get_name();
         const new_url = info.urlnode.url + `/${new_url_name}`;
         let new_urlnode = new UrlNode(new_url);
         new_urlnode.file = new_file;
         info.urlnode.suburls[new_url_name] = new_urlnode;
+
+        info.filenode.files[this.get_filename(info.abspath)] = new_file;
         return new_urlnode;
     }
 
@@ -132,6 +135,10 @@ export class FileTree {
             cur_urlstr = next_urlstr;
         }
         return cur;
+    }
+
+    private get_filename(abspath: string): string {
+        return path.basename(abspath);
     }
 
     private get_relpath(abspath: string): string {

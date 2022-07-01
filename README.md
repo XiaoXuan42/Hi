@@ -9,7 +9,7 @@ To use, you need to provide a `config.yml` in the root directory of your project
 - `include`: An array contains files/directories in the root directory of your project that you want to move to the output.
 - `privates`: An array stores directory just in the root directory of your project you want to encrpyt.
 - `passwd`: Passwd used to encrpytion.
-- `outputDir`: Output directory, default `output`. Note that it will remove everything inside the output directory rather than sub-directories that starts with '.'.
+- `outputDirectory`: Output directory, default `output`. Note that it will remove everything inside the output directory rather than sub-directories that starts with '.'.
 
 Inside `fileTemplatePath` your should provide `markdown.jinja` and `private.jinja` as templates for markdown and private files. You can use `markdown.stylesheet` and `markdown.html` variable in `markdown.jinja`. `ciphertext` and `private_scripts` which stand for ciphertext tag and javascripts code needed are available in `private.jinja`.
 

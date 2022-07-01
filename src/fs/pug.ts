@@ -5,8 +5,8 @@ import { FileTemplate } from '../template';
 export class PugFile extends File {
     private _html: undefined | string;
     
-    constructor(abspath: string, public content: string, public is_private: boolean) {
-        super(abspath, content, is_private);
+    constructor(abspath: string, parent_url: string, content: string, is_private: boolean) {
+        super(abspath, parent_url, content, is_private);
     }
 
     output(template: FileTemplate, context: any): string {

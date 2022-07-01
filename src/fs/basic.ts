@@ -7,11 +7,15 @@ integrity="sha384-ZPe7yZ91iWxYumsBEOn7ieg8q/o+qh/hQpSaPow8T6BwALcXSCS6C6fSRPIAnT
 const highlight_css = String.raw`<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">`;
 export const mk_stylesheet = [katex_css, highlight_css].join('\n');
 
+export type pathstr = string;
+export type urlstr = string;
 export class File {
     protected name: string;
+    protected url: urlstr;
 
-    constructor(abspath: string, public content: string, public is_private: boolean) {
+    constructor(abspath: string, parent_url: urlstr, public content: string, public is_private: boolean) {
         this.name = path.basename(abspath);
+        this.url = `${parent_url}/${this.get_name()}`;
     }
 
     // the content of the file to be generated
@@ -28,6 +32,10 @@ export class File {
         return this.convert_to_urlname();
     }
 
+    public get_url(): string {
+        return this.url;
+    }
+
     public on_change(content: string) {
         this.content = content;
     }
@@ -37,8 +45,6 @@ export class File {
     }
 }
 
-export type pathstr = string;
-export type urlstr = string;
 export class DirNode {
     files: {[name: string]: File};
     subdirs: {[name: string]: DirNode};

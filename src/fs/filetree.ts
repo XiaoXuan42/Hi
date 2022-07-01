@@ -34,10 +34,9 @@ export class FileTree {
         if (info.filenode instanceof File) {
             throw Error("Meet some internal error when adding a new file.");
         }
-        let new_file: File = generate_file(info.abspath, info.is_private);
-
+        let new_file: File = generate_file(info.abspath, info.urlnode.url, info.is_private);
         const new_url_name = new_file.get_name();
-        const new_url = info.urlnode.url + `/${new_url_name}`;
+        const new_url = new_file.get_url();
         let new_urlnode = new UrlNode(new_url);
         new_urlnode.file = new_file;
         info.urlnode.suburls[new_url_name] = new_urlnode;

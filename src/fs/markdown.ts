@@ -1,6 +1,6 @@
 import * as path from 'path';
 import { FileTemplate } from '../template';
-import { mk_stylesheet, File } from './basic';
+import { mk_stylesheet, File, urlstr } from './basic';
 import { render_markdown } from '../markdown';
 import * as fm from 'front-matter';
 
@@ -10,8 +10,8 @@ export class MarkDownFile extends File {
     front_matter: any;
     private _html: string | undefined;
 
-    constructor(abspath: string, content: string, is_private: boolean) {
-        super(abspath, content, is_private);
+    constructor(abspath: string, parent_url: urlstr, content: string, is_private: boolean) {
+        super(abspath, parent_url, content, is_private);
         this.html = '';
         this.stylesheet = '';
         this.configure_from_content();

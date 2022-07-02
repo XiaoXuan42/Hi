@@ -9,6 +9,7 @@ export class Server {
         const port = 8080;
         this.server = http.createServer((req, res) => {
             if (req.url) {
+                req.url = decodeURI(req.url);
                 const content = this.filetree.get_result_content(req.url);
                 if (content) {
                     res.writeHead(200);

@@ -7,15 +7,53 @@ integrity="sha384-ZPe7yZ91iWxYumsBEOn7ieg8q/o+qh/hQpSaPow8T6BwALcXSCS6C6fSRPIAnT
 const highlight_css = String.raw`<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">`;
 export const mk_stylesheet = [katex_css, highlight_css].join('\n');
 
-export type pathstr = string;
-export type urlstr = string;
-export class File {
-    protected name: string;
-    protected url: urlstr;
-
-    constructor(public abspath: string, parent_url: urlstr, public content: string, public is_private: boolean) {
+export class FNode {
+    public name: string;
+    constructor(public abspath: string, public url: string, public is_private: boolean) {
         this.name = path.basename(abspath);
-        this.url = `${parent_url}/${this.get_name()}`;
+    }
+
+    public get_base_url(): string {
+        return this.name;
+    }
+
+    public get_url(): string {
+        return this.url;
+    }
+}
+
+export class Dir extends FNode {
+    public project_map: { [name: string]: FNode };  // access through name in the project
+    public url_map: { [name: string]: FNode };  // access through name in the target(url)
+
+    constructor(abspath: string, url: string, is_private: boolean) {
+        super(abspath, url, is_private);
+        this.project_map = {};
+        this.url_map = {};
+    }
+
+    public insert_project_map(name: string, fnode: FNode) {
+        if (name in this.project_map) {
+            throw Error(`${name} under ${this.abspath} already exists.`);
+        }
+        this.project_map[name] = fnode;
+    }
+
+    public insert_url_map(url: string, fnode: FNode) {
+        if (url in this.url_map) {
+            throw Error(`Url ${url} under ${this.url} already exists.`)
+        }
+        this.url_map[url] = fnode;
+    }
+}
+
+
+export class File extends FNode {
+    public content: string;
+    constructor(abspath: string, parent_url: string, content: string, is_private: boolean) {
+        super(abspath, parent_url, is_private);
+        this.url = `${parent_url}/${this.get_base_url()}`;
+        this.content = content;
     }
 
     // the content of the file to be generated
@@ -23,13 +61,14 @@ export class File {
         return this.content;
     }
 
-    public convert_to_urlname(): string {
+    // get the filename of the file in the project
+    public get_project_name(): string {
         return this.name;
     }
 
-    // get the filename of the file to be generated
-    public get_name(): string {
-        return this.convert_to_urlname();
+    // get the 'base' url of current file
+    public get_base_url(): string {
+        return this.name;
     }
 
     public get_url(): string {
@@ -44,31 +83,3 @@ export class File {
         return this.constructor.name;
     }
 }
-
-export class DirNode {
-    files: {[name: string]: File};
-    subdirs: {[name: string]: DirNode};
-
-    constructor() {
-        this.files = {};
-        this.subdirs = {};
-    }
-}
-
-export class UrlNode {
-    url: urlstr;  // url is global url
-    suburls: {[name: string]: UrlNode};
-    file: File | undefined;
-    constructor(url: urlstr) {
-        this.url = url;
-        this.suburls = {};
-    }
-}
-
-export interface NodeInfo {
-    filenode: DirNode | File;
-    urlnode: UrlNode;
-    abspath: string;
-    is_private: boolean;
-}
-

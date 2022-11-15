@@ -1,4 +1,4 @@
-import { File, UrlNode } from './fs/basic';
+import { File, FNode } from './fs/basic';
 import { FileTree } from './fs/filetree';
 import { Config } from './config';
 
@@ -8,10 +8,14 @@ export class Converter {
         this.meta = config.meta;
     }
 
-    public convert(urlnode: UrlNode, f: File): string {
+    public convert(fnode: FNode): string {
         let context = {
             context: this
         };
-        return f.output(this.config.file_template, context);
+        if (fnode instanceof File) {
+            return fnode.output(this.config.file_template, context);
+        } else {
+            throw Error(`${fnode.abspath} is not a file.`);
+        }
     }
 }

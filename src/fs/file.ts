@@ -1,11 +1,11 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { File, urlstr } from './basic';
+import { File } from './basic';
 import { MarkDownFile } from './markdown';
 import { JinjaFile } from './jinja';
 import { PugFile } from './pug';
 
-export function generate_file(abspath: string, parent_url: urlstr, is_private: boolean): File {
+export function generate_file(abspath: string, parent_url: string, is_private: boolean): File {
     const content = fs.readFileSync(abspath).toString();
     const filename = path.basename(abspath);
     const extname = path.extname(filename);

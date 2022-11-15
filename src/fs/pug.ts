@@ -19,9 +19,9 @@ export class PugFile extends File {
         return this._html;
     }
 
-    convert_to_urlname(): string {
+    public get_base_url(): string {
         let basename = path.basename(this.name, ".pug");
-        return basename + '.html';
+        return basename + ".html";
     }
 
     on_change(content: string): void {

@@ -10,7 +10,6 @@ export class Config {
     readonly file_template_path: string;  // absolute path
     readonly include_files: Set<string>;
     readonly output_dir: string;
-    readonly routes: {[path:string]: string};
     readonly privates: Set<string>;
     readonly file_template: FileTemplate;
     readonly passwd: string;
@@ -47,12 +46,6 @@ export class Config {
         }
         if (!path.isAbsolute(this.output_dir)) {
             this.output_dir = path.join(project_root_dir, this.output_dir);
-        }
-        
-        // routes
-        this.routes = {};
-        if ('routes' in yaml) {
-            this.routes = yaml['routes'];
         }
 
         // privates

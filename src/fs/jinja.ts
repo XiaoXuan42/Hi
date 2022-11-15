@@ -1,13 +1,13 @@
 import * as path from 'path';
 import { FileTemplate } from '../template';
-import { mk_stylesheet, File, urlstr } from './basic';
+import { mk_stylesheet, File } from './basic';
 import { render_markdown } from '../markdown';
 
 export class JinjaFile extends File {
     private _html: undefined | string;
     private _converted_content: string;
     stylesheet: string;
-    constructor(abspath: string, parent_url: urlstr, content: string, is_private: boolean) {
+    constructor(abspath: string, parent_url: string, content: string, is_private: boolean) {
         super(abspath, parent_url, content, is_private);
         this._converted_content = JinjaFile.convert_mk_tag(this.content);
         this.stylesheet = mk_stylesheet;
@@ -49,7 +49,7 @@ export class JinjaFile extends File {
         return this._html;
     }
 
-    convert_to_urlname(): string {
+    public get_base_url(): string {
         let basename = path.basename(this.name, '.jinja');
         return basename + '.html';
     }

@@ -2,10 +2,31 @@ import { AES } from 'crypto-js';
 
 let private_scripts: string = String.raw`<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
 <script type="text/javascript">
+  function set_passwd_storage(value) {
+    var date = new Date();
+    var data = {
+      value: value,
+      expiry: date.getTime() + 3*30*24*60*60*1000
+    };
+    window.localStorage.setItem('_hi_private_passwd', JSON.stringify(data));
+  }
+  function get_passwd_storage() {
+    var data = window.localStorage.getItem('_hi_private_passwd');
+    if (data) {
+      data = JSON.parse(data);
+      var now = new Date();
+      if (now.getTime() > data.expiry) {
+        return null;
+      } else {
+        return data.value;
+      }
+    }
+  }
   function submit_passwd(passwd) {
     try {
       var html_str = _decipher(passwd);
       _replace(html_str);
+      set_passwd_storage(passwd);
       return true;
     } catch(error) {
       return false;
@@ -24,6 +45,12 @@ let private_scripts: string = String.raw`<script type="text/javascript" src="htt
     document.open();
     document.write(html_str);
     document.close();
+  }
+  window.onload = function() {
+    var passwd = get_passwd_storage();
+    if (passwd) {
+      submit_passwd(passwd);
+    }
   }
 </script>`;
 

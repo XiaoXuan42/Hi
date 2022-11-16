@@ -3,6 +3,7 @@ import { FileTree } from './fs/filetree';
 import { Converter } from './converter';
 import * as chokidar from 'chokidar';
 import * as fs from 'fs';
+import { assert } from 'console';
 
 export class Listener {
     change_set: Set<string>;
@@ -53,8 +54,14 @@ export class Listener {
         }
         for (const abspath of this.change_set) {
             if (!updated.has(abspath) && fs.existsSync(abspath)) {
-                this.filetree.on_change(abspath, this.converter.convert.bind(this.converter));
-                updated.add(abspath);
+                assert(!this.config.is_config(abspath));  // modification on config is not supported
+                if (this.config.is_file_template(abspath)) {
+                    this.config.reload_file_template();
+                    this.filetree.reload_all_lazy();
+                } else if (this.config.is_included(abspath)) {
+                    this.filetree.on_change(abspath, this.converter.convert.bind(this.converter));
+                }
+                updated.add(abspath);                
             }
         }
         this.add_set.clear();

@@ -149,6 +149,9 @@ export class FileTree {
 
     private find_by_url(url: string): FNode | undefined {
         const url_array = this.get_url_array(url);
+        if (url_array.length === 0) {
+            return undefined;
+        }
         let fnode: FNode = this.fnode_root;
         
         for (const suburl of url_array) {
@@ -178,6 +181,10 @@ export class FileTree {
 
     private visit_url(callback: (fnode: File) => any, response: (fnode: FNode, res: any) => any) {
         this._visit_url(this.fnode_root, callback, response);
+    }
+
+    public reload_all_lazy() {
+        this.fnode_root.dirty = true;
     }
 
     public on_change(abspath: string, converter: (fnode: FNode) => string) {
@@ -221,7 +228,7 @@ export class FileTree {
         }
     }
 
-    public write(converter: (fnode: File) => string) {
+    public clear_and_write(converter: (fnode: File) => string) {
         // remove all contents inside output directory except files begin with dot
         if (fs.existsSync(this.config.output_dir)) {
             const files = fs.readdirSync(this.config.output_dir);

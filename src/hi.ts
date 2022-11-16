@@ -25,7 +25,7 @@ export class Hi {
     }
 
     generate() {
-        this.filetree.write(this.converter.convert.bind(this.converter));
+        this.filetree.clear_and_write(this.converter.convert.bind(this.converter));
     }
 
     live() {

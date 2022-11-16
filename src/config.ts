@@ -5,16 +5,17 @@ import { FileTemplate } from './template';
 import YAML from 'yaml';
 
 export class Config {
+    // configurations in this block are given in config.yml and remain the same during the livetime of the process
     readonly project_root_dir: string;  // root directory of current project, absolute path
-    readonly config_path: string;
+    readonly config_path: string;  // absolute path
     readonly file_template_path: string;  // absolute path
-    readonly include_files: Set<string>;
-    readonly output_dir: string;
-    readonly privates: Set<string>;
-    readonly file_template: FileTemplate;
+    readonly include_files: Set<string>;  // relative path to project_root_dir
+    readonly output_dir: string;  // absolute path
+    readonly privates: Set<string>;  // relative path
     readonly passwd: string;
     readonly meta: object;
 
+    public file_template: FileTemplate;
     /**
      * Configuration of the project
      * @param project_root_dir root directory of the project, absolute path
@@ -64,5 +65,34 @@ export class Config {
         } else {
             this.meta = {};
         }
+    }
+
+    public reload_file_template() {
+        this.file_template = new FileTemplate(this.file_template_path);
+    }
+
+    public is_inside_project(abspath: string): boolean {
+        assert(path.isAbsolute(abspath));
+        return abspath.startsWith(this.project_root_dir);
+    }
+
+    public is_included(abspath: string): boolean {
+        assert(path.isAbsolute(abspath));
+        for (const file of this.include_files) {
+            if (abspath.startsWith(path.join(this.project_root_dir, file))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public is_config(abspath: string): boolean {
+        assert(path.isAbsolute(abspath));
+        return abspath === this.config_path;
+    }
+
+    public is_file_template(abspath: string): boolean {
+        assert(path.isAbsolute(abspath));
+        return abspath.startsWith(this.file_template_path);
     }
 }

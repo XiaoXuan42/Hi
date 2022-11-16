@@ -9,6 +9,7 @@ export const mk_stylesheet = [katex_css, highlight_css].join('\n');
 
 export class FNode {
     public name: string;
+    // modules outside fs should not be aware of the existence of this field
     public dirty: boolean;  // should we read the source and generate the target again
     constructor(public abspath: string, public url: string, public is_private: boolean) {
         this.name = path.basename(abspath);

@@ -59,6 +59,6 @@ export function encrypt(content: string, passwd: string): string {
     return encrypted;
 }
 
-export function get_private_scripts(): string {
-    return private_scripts;
+export function get_private_scripts(project_name: string): string {
+    return private_scripts.replaceAll('_hi_private_passwd', `_hi_private_${project_name}_passwd`);
 }

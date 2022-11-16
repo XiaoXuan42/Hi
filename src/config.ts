@@ -13,7 +13,7 @@ export class Config {
     readonly output_dir: string;  // absolute path
     readonly privates: Set<string>;  // relative path
     readonly passwd: string;
-    readonly meta: object;
+    readonly meta: {[name: string]: any};
 
     public file_template: FileTemplate;
     /**
@@ -65,6 +65,14 @@ export class Config {
         } else {
             this.meta = {};
         }
+
+        if (!('project_name' in this.meta)) {
+            this.meta['project_name'] = path.basename(this.output_dir);
+        }
+    }
+
+    public get_project_name() {
+        return this.meta['project_name'];
     }
 
     public reload_file_template() {

@@ -55,7 +55,7 @@ export class FileTree {
             // encrypt the content of file
             content = encrypt(content, this.config.passwd);
             const output_tag = `<p id="ciphertext" hidden>${content}</p>`;
-            content = FileTemplate.get_instantiation(this.config.file_template.private_template, { ciphertext: output_tag, private_scripts: get_private_scripts() }, "jinja");
+            content = FileTemplate.get_instantiation(this.config.file_template.private_template, { ciphertext: output_tag, private_scripts: get_private_scripts(this.config.get_project_name()) }, "jinja");
         }
         fs.writeFileSync(output_path, content);
     }
@@ -153,7 +153,7 @@ export class FileTree {
             return undefined;
         }
         let fnode: FNode = this.fnode_root;
-        
+
         for (const suburl of url_array) {
             if (fnode instanceof Dir && suburl in fnode.url_map) {
                 fnode.putdown_dirty();
@@ -268,7 +268,7 @@ export class FileTree {
     // ** matches any directory names or empties.
     public search_by_url_pattern(url_pattern: string): File[] {
         const url_array = url_pattern.split('/').filter(s => s);
-        let queue: [{node: FNode, index: number}] = [{node: this.fnode_root, index: 0}];
+        let queue: [{ node: FNode, index: number }] = [{ node: this.fnode_root, index: 0 }];
         let file_set: Set<File> = new Set();
         let result: File[] = [];
         while (true) {
@@ -293,7 +293,7 @@ export class FileTree {
                     continue;
                 } else if (node instanceof Dir && cur_pattern === '**') {
                     Object.entries(node.url_map).forEach(([_, value]) => {
-                        queue.push({node: value, index: index});
+                        queue.push({ node: value, index: index });
                     })
                 }
                 continue;
@@ -302,20 +302,20 @@ export class FileTree {
             if (node instanceof Dir) {
                 if (cur_pattern === '*') {
                     Object.entries(node.url_map).forEach(([_, value]) => {
-                        queue.push({node: value, index: index + 1});
+                        queue.push({ node: value, index: index + 1 });
                     });
-                    queue.push({node: node, index: index + 1});  // match empty
+                    queue.push({ node: node, index: index + 1 });  // match empty
                 } else if (cur_pattern === '**') {
                     Object.entries(node.url_map).forEach(([_, value]) => {
-                        queue.push({node: value, index: index});
-                        queue.push({node: value, index: index + 1});
+                        queue.push({ node: value, index: index });
+                        queue.push({ node: value, index: index + 1 });
                     });
-                    queue.push({node: node, index: index + 1});
+                    queue.push({ node: node, index: index + 1 });
                 } else {
                     let re = new RegExp(`^${cur_pattern}$`);
                     Object.entries(node.url_map).forEach(([key, value]) => {
                         if (re.test(key)) {
-                            queue.push({node: value, index: index + 1});
+                            queue.push({ node: value, index: index + 1 });
                         }
                     });
                 }

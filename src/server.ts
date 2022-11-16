@@ -1,16 +1,17 @@
 import { FileTree } from './fs/filetree';
+import { Converter } from './converter';
 import * as http from 'http';
 
 export class Server {
     server: http.Server | undefined;
-    constructor(public filetree: FileTree) {}
+    constructor(public filetree: FileTree, public converter: Converter) {}
 
     start() {
         const port = 8080;
         this.server = http.createServer((req, res) => {
             if (req.url) {
                 req.url = decodeURI(req.url);
-                const content = this.filetree.get_result_content(req.url);
+                const content = this.filetree.get_result_content(req.url, this.converter.get_convert_fn());
                 if (content) {
                     res.writeHead(200);
                     res.end(content);

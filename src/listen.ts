@@ -43,7 +43,7 @@ export class Listener {
         for (const abspath of this.add_set) {
             if (fs.existsSync(abspath)) {
                 updated.add(abspath);
-                this.filetree.on_add(abspath, this.converter.convert.bind(this.converter));
+                this.filetree.on_add(abspath, this.converter.get_convert_fn());
             }
         }
         for (const abspath of this.remove_set) {

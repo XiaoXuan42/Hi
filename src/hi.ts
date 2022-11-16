@@ -21,7 +21,7 @@ export class Hi {
         this.filetree = new FileTree(this.config);
         this.converter = new Converter(this.filetree, this.config);
         this.listener = new Listener(this.config, this.filetree, this.converter);
-        this.server = new Server(this.filetree);
+        this.server = new Server(this.filetree, this.converter);
     }
 
     generate() {

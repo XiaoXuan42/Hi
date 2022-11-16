@@ -18,4 +18,8 @@ export class Converter {
             throw Error(`${fnode.abspath} is not a file.`);
         }
     }
+
+    public get_convert_fn(): (file: FNode) => string {
+        return this.convert.bind(this);
+    }
 }

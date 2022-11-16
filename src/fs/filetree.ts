@@ -25,12 +25,11 @@ export class FileTree {
 
     /**
      * 
-     * @param info information with filenode of the directory and other attributes about the file
+     * @param dirnode information with filenode of the directory and other attributes about the file
      * @returns file's url
      */
     private add_file(dirnode: Dir, abspath: string, is_private: boolean): File {
         let new_file: File = generate_file(abspath, dirnode.url, is_private);
-        const new_url = new_file.get_url();
 
         dirnode.insert_project_map(path.basename(abspath), new_file);
         dirnode.insert_url_map(new_file.get_base_url(), new_file);
@@ -42,6 +41,34 @@ export class FileTree {
         const suburl = fnode.get_base_url();
         delete dirnode.project_map[name];
         delete dirnode.url_map[suburl];
+    }
+
+    private write_file(file: File, content: string) {
+        const url = file.get_url();
+        const parent_url = url.slice(0, url.lastIndexOf('/'));
+        const parent_dir = this.url_to_output_path(parent_url);
+        if (!fs.existsSync(parent_dir)) {
+            fs.mkdirSync(parent_dir, { recursive: true });
+        }
+        const output_path = this.url_to_output_path(url);
+        if (file.is_private) {
+            // encrypt the content of file
+            content = encrypt(content, this.config.passwd);
+            const output_tag = `<p id="ciphertext" hidden>${content}</p>`;
+            content = FileTemplate.get_instantiation(this.config.file_template.private_template, { ciphertext: output_tag, private_scripts: get_private_scripts() }, "jinja");
+        }
+        fs.writeFileSync(output_path, content);
+    }
+
+    private read_file(file: File) {
+        const content = fs.readFileSync(file.abspath).toString();
+        file.on_change(content);
+        file.dirty = false;
+    }
+
+    private convert_and_write(file: File, converter: (file: File) => string) {
+        const converted_content = converter(file);
+        this.write_file(file, converted_content);
     }
 
     /**
@@ -97,7 +124,7 @@ export class FileTree {
     }
 
     private get_url_array(url: string): string[] {
-        return url.split('.').filter(s => s);
+        return url.split('/').filter(s => s);
     }
 
     private url_to_output_path(url: string): string {
@@ -111,6 +138,7 @@ export class FileTree {
 
         for (const filename of relpath_array) {
             if (fnode instanceof Dir && filename in fnode.project_map) {
+                fnode.putdown_dirty();
                 fnode = fnode.project_map[filename];
             } else {
                 return undefined;
@@ -125,6 +153,7 @@ export class FileTree {
         
         for (const suburl of url_array) {
             if (fnode instanceof Dir && suburl in fnode.url_map) {
+                fnode.putdown_dirty();
                 fnode = fnode.url_map[suburl];
             } else {
                 return undefined;
@@ -133,25 +162,11 @@ export class FileTree {
         return fnode;
     }
 
-    private output_file(file: File, content: string) {
-        const url = file.get_url();
-        const parent_url = url.slice(0, url.lastIndexOf('/'));
-        const parent_dir = this.url_to_output_path(parent_url);
-        if (!fs.existsSync(parent_dir)) {
-            fs.mkdirSync(parent_dir, { recursive: true });
-        }
-        const output_path = this.url_to_output_path(url);
-        if (file.is_private) {
-            // encrypt the content of file
-            content = encrypt(content, this.config.passwd);
-            const output_tag = `<p id="ciphertext" hidden>${content}</p>`;
-            content = FileTemplate.get_instantiation(this.config.file_template.private_template, { ciphertext: output_tag, private_scripts: get_private_scripts() }, "jinja");
-        }
-        fs.writeFileSync(output_path, content);
-    }
-
     private _visit_url(fnode: FNode, callback: (fnode: File) => any, response: (fnode: FNode, res: any) => any) {
         if (fnode instanceof File) {
+            if (fnode.dirty) {
+                this.read_file(fnode);
+            }
             let res = callback(fnode);
             return response(fnode, res);
         } else if (fnode instanceof Dir) {
@@ -169,10 +184,8 @@ export class FileTree {
         const find_res = this.find_by_path(abspath);
         if (find_res) {
             if (find_res instanceof File) {
-                const content = fs.readFileSync(abspath).toString();
-                find_res.on_change(content);
-                const output_content = converter(find_res);
-                this.output_file(find_res, output_content);
+                this.read_file(find_res);
+                this.convert_and_write(find_res, converter);
             }
         }
     }
@@ -192,8 +205,7 @@ export class FileTree {
             }
             find_res.abspath = abspath;
             const new_file = this.add_file(find_res, abspath, find_res.is_private);
-            const new_content = converter(new_file);
-            this.output_file(new_file, new_content);
+            this.convert_and_write(new_file, converter);
         }
     }
 
@@ -223,16 +235,21 @@ export class FileTree {
         this.visit_url(converter, (node, res: string) => {
             assert(node instanceof File && res);
             if (node instanceof File) {
-                this.output_file(node, res);
+                assert(!node.dirty);
+                this.write_file(node, res);
             }
         });
     }
 
-    public get_result_content(url: string): string | undefined {
+    public get_result_content(url: string, converter: (file: File) => string): string | undefined {
         const find_res = this.find_by_url(url);
         if (find_res) {
             if (!(find_res instanceof File)) {
                 throw Error(`${url} is not a file`);
+            }
+            if (find_res.dirty) {
+                this.read_file(find_res);
+                this.convert_and_write(find_res, converter);
             }
             return fs.readFileSync(this.url_to_output_path(url)).toString();
         } else {

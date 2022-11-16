@@ -9,8 +9,10 @@ export const mk_stylesheet = [katex_css, highlight_css].join('\n');
 
 export class FNode {
     public name: string;
+    public dirty: boolean;  // should we read the source and generate the target again
     constructor(public abspath: string, public url: string, public is_private: boolean) {
         this.name = path.basename(abspath);
+        this.dirty = false;
     }
 
     public get_base_url(): string {
@@ -44,6 +46,15 @@ export class Dir extends FNode {
             throw Error(`Url ${url} under ${this.url} already exists.`)
         }
         this.url_map[url] = fnode;
+    }
+
+    public putdown_dirty() {
+        if (this.dirty) {
+            this.dirty = false;
+            for (let url in this.url_map) {
+                this.url_map[url].dirty = true;
+            }
+        }
     }
 }
 

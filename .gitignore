@@ -7,4 +7,3 @@ out/
 default/
 bin/
 *.tgz
-pack.sh

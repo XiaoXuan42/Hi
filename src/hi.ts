@@ -33,7 +33,10 @@ export class Hi {
         const git_out = execSync(`git add . && git commit -m ${message}`, {
             cwd: this.config.output_dir
         });
-        return git_out.toString();
+        const push_out = execSync(`git push`, {
+            cwd: this.config.output_dir
+        });
+        return `${git_out.toString()}\n${push_out.toString()}`
     }
 
     public live() {

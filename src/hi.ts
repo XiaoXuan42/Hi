@@ -5,6 +5,7 @@ import { FileTree } from './fs/filetree';
 import { Listener } from './listen';
 import { Server } from './server';
 import { Converter } from './converter';
+import { execSync } from 'child_process';
 
 export class Hi {
     private config: Config;
@@ -24,11 +25,18 @@ export class Hi {
         this.server = new Server(this.filetree, this.converter);
     }
 
-    generate() {
+    public generate() {
         this.filetree.clear_and_write(this.converter.convert.bind(this.converter));
     }
 
-    live() {
+    public git_commit(message: string): string {
+        const git_out = execSync(`git add . && git commit -m ${message}`, {
+            cwd: this.config.output_dir
+        });
+        return git_out.toString();
+    }
+
+    public live() {
         this.listener.listen();
         this.server.start();
     }

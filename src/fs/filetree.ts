@@ -252,7 +252,7 @@ export class FileTree {
         const find_res = this.find_by_url(url);
         if (find_res) {
             if (!(find_res instanceof File)) {
-                throw Error(`${url} is not a file`);
+                return undefined;
             }
             if (find_res.dirty) {
                 this.read_file(find_res);

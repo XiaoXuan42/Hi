@@ -1,9 +1,10 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { FileTemplate } from '../template';
 import { mk_stylesheet, File } from '../fs/basic';
 import { render_markdown } from '../markdown';
 import * as fm from 'front-matter';
+import * as nunjucks from 'nunjucks'
+import { Config } from '../config'
 
 export class MarkDownFile extends File {
     public html: string;
@@ -54,13 +55,13 @@ export class MarkDownFile extends File {
         return basename + '.html'
     }
 
-    output(template: FileTemplate, context: any): string {
+    output(config: Config, context: any): string {
         if (!context) {
             context = {};
         }
         context.markdown = this;
         if (!this._html) {
-            this._html = FileTemplate.get_instantiation(template.markdown_template, context, "jinja");
+            this._html = nunjucks.renderString(config.get_template("markdown.jinja"), context)
         }
         return this._html;
     }

@@ -1,7 +1,6 @@
 import { assert } from 'console';
 import * as fs from 'fs';
 import * as path from 'path';
-import { FileTemplate } from './template';
 import YAML from 'yaml';
 
 export class Config {
@@ -15,7 +14,7 @@ export class Config {
     readonly passwd: string;
     readonly meta: {[name: string]: any};
 
-    public file_template: FileTemplate;
+    private file_templates: {[name: string]: string};
     /**
      * Configuration of the project
      * @param project_root_dir root directory of the project, absolute path
@@ -57,7 +56,9 @@ export class Config {
             }
         }
 
-        this.file_template = new FileTemplate(this.file_template_path);
+        this.file_templates = {}
+        this.reload_file_template()
+
         this.passwd = yaml['passwd'];
 
         if ('meta' in yaml) {
@@ -76,7 +77,18 @@ export class Config {
     }
 
     public reload_file_template() {
-        this.file_template = new FileTemplate(this.file_template_path);
+        let templates: string[] = fs.readdirSync(this.file_template_path)
+        for (let template of templates) {
+            let curpath = `${this.file_template_path}/${template}`
+            if (fs.lstatSync(curpath).isFile()) {
+                let key = path.basename(curpath)
+                this.file_templates[key] = fs.readFileSync(curpath).toString()
+            }
+        }
+    }
+
+    public get_template(key: string): string {
+        return this.file_templates[key];
     }
 
     public is_inside_project(abspath: string): boolean {

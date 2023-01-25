@@ -13,7 +13,7 @@ export class Converter {
             context: this
         };
         if (fnode instanceof File) {
-            return fnode.output(this.config.file_template, context);
+            return fnode.output(this.config, context);
         } else {
             throw Error(`${fnode.abspath} is not a file.`);
         }

@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { FileTemplate } from '../template';
+import { Config } from '../config';
 
 const katex_css = String.raw`<link rel="stylesheet" 
 href="https://cdn.jsdelivr.net/npm/katex@0.15.6/dist/katex.min.css"
@@ -79,7 +79,7 @@ export class File extends FNode {
     }
 
     // the content of the file to be generated
-    public output(template: FileTemplate, context: any): string {
+    public output(config: Config, context: any): string {
         return this.content;
     }
 

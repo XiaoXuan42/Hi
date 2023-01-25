@@ -1,7 +1,8 @@
 import * as path from 'path';
-import { FileTemplate } from '../template';
 import { mk_stylesheet, File } from '../fs/basic';
 import { render_markdown } from '../markdown';
+import { Config } from '../config';
+import * as nunjucks from 'nunjucks'
 
 export class JinjaFile extends File {
     private _html: undefined | string;
@@ -43,13 +44,13 @@ export class JinjaFile extends File {
         return basename + '.html';
     }
 
-    output(template: FileTemplate, context: any): string {
+    output(config: Config, context: any): string {
         if (!context) {
             context = {};
         }
         context.jinja = this;
         if (!this._html) {
-            this._html = FileTemplate.get_instantiation(this._converted_content, context, "jinja");
+            this._html = nunjucks.renderString(this._converted_content, context)
         }
         return this._html;
     }

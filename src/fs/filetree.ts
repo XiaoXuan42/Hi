@@ -1,11 +1,11 @@
 import { Config } from '../config';
 import { generate_file } from './file';
-import { FileTemplate } from '../template';
 import { encrypt, get_private_scripts } from '../private';
 import { File, Dir, FNode } from './basic';
 import * as fs from 'fs';
 import * as path from 'path';
 import { assert } from 'console';
+import * as nunjucks from 'nunjucks'
 
 export class FileTree {
     private fnode_root: Dir;
@@ -13,7 +13,6 @@ export class FileTree {
 
     constructor(config: Config) {
         this.config = config;
-        FileTemplate.config_working_dir(this.config.project_root_dir);
         this.fnode_root = new Dir(this.config.project_root_dir, '', false);
         this.fnode_root.name = '.';
         let include_files: string[] = [];
@@ -43,6 +42,16 @@ export class FileTree {
         delete dirnode.url_map[suburl];
     }
 
+    private encrpyt_content(plaintext: string): string {
+        const content = encrypt(plaintext, this.config.passwd)
+        const output_tag = `<p id="ciphertext" hidden>${content}</p>`
+        const context = {
+            ciphertext: output_tag,
+            private_scripts: get_private_scripts(this.config.get_project_name())
+        }
+        return nunjucks.renderString(this.config.get_template("private.jinja"), context)
+    }
+
     private write_file(file: File, content: string) {
         const url = file.get_url();
         const parent_url = url.slice(0, url.lastIndexOf('/'));
@@ -53,9 +62,7 @@ export class FileTree {
         const output_path = this.url_to_output_path(url);
         if (file.is_private) {
             // encrypt the content of file
-            content = encrypt(content, this.config.passwd);
-            const output_tag = `<p id="ciphertext" hidden>${content}</p>`;
-            content = FileTemplate.get_instantiation(this.config.file_template.private_template, { ciphertext: output_tag, private_scripts: get_private_scripts(this.config.get_project_name()) }, "jinja");
+            content = this.encrpyt_content(content)
         }
         fs.writeFileSync(output_path, content);
     }

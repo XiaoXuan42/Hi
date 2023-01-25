@@ -1,6 +1,7 @@
 import * as path from 'path';
+import { Config } from '../config';
 import { File } from '../fs/basic';
-import { FileTemplate } from '../template';
+import * as pub from 'pug'
 
 export class PugFile extends File {
     private _html: undefined | string;
@@ -14,12 +15,12 @@ export class PugFile extends File {
         return basename + ".html";
     }
 
-    output(template: FileTemplate, context: any): string {
+    output(config: Config, context: any): string {
         if (!context) {
             context = {};
         }
         if (!this._html) {
-            this._html = FileTemplate.get_instantiation(this.content, context, "pug");
+            this._html = pub.render(this.content)
         }
         return this._html;
     }

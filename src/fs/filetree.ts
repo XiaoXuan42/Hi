@@ -26,7 +26,7 @@ export class FileTree {
     /**
      * 
      * @param dirnode information with filenode of the directory and other attributes about the file
-     * @returns file's url
+     * @returns file
      */
     private add_file(dirnode: Dir, abspath: string, is_private: boolean): File {
         let new_file: File = generate_file(abspath, dirnode.url, is_private);

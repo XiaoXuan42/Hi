@@ -1,6 +1,6 @@
 import * as path from 'path';
 import { FileTemplate } from '../template';
-import { mk_stylesheet, File } from './basic';
+import { mk_stylesheet, File } from '../fs/basic';
 import { render_markdown } from '../markdown';
 
 export class JinjaFile extends File {
@@ -38,6 +38,11 @@ export class JinjaFile extends File {
         return result;
     }
 
+    protected base_url_from_proj_name(proj_name: string): string {
+        let basename = path.basename(proj_name, '.jinja');
+        return basename + '.html';
+    }
+
     output(template: FileTemplate, context: any): string {
         if (!context) {
             context = {};
@@ -47,11 +52,6 @@ export class JinjaFile extends File {
             this._html = FileTemplate.get_instantiation(this._converted_content, context, "jinja");
         }
         return this._html;
-    }
-
-    public get_base_url(): string {
-        let basename = path.basename(this.name, '.jinja');
-        return basename + '.html';
     }
 
     on_change(content: string): void {

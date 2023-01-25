@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { File } from './basic';
+import { File } from '../fs/basic';
 import { FileTemplate } from '../template';
 
 export class PugFile extends File {
@@ -7,6 +7,11 @@ export class PugFile extends File {
     
     constructor(abspath: string, parent_url: string, content: string, is_private: boolean) {
         super(abspath, parent_url, content, is_private);
+    }
+
+    protected base_url_from_proj_name(proj_name: string): string {
+        let basename = path.basename(proj_name, ".pug");
+        return basename + ".html";
     }
 
     output(template: FileTemplate, context: any): string {
@@ -17,11 +22,6 @@ export class PugFile extends File {
             this._html = FileTemplate.get_instantiation(this.content, context, "pug");
         }
         return this._html;
-    }
-
-    public get_base_url(): string {
-        let basename = path.basename(this.name, ".pug");
-        return basename + ".html";
     }
 
     on_change(content: string): void {

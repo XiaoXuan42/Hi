@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { FileTemplate } from '../template';
-import { mk_stylesheet, File } from './basic';
+import { mk_stylesheet, File } from '../fs/basic';
 import { render_markdown } from '../markdown';
 import * as fm from 'front-matter';
 
@@ -49,6 +49,11 @@ export class MarkDownFile extends File {
         }
     }
 
+    protected base_url_from_proj_name(proj_name: string): string {
+        let basename = path.basename(proj_name, '.md')
+        return basename + '.html'
+    }
+
     output(template: FileTemplate, context: any): string {
         if (!context) {
             context = {};
@@ -58,11 +63,6 @@ export class MarkDownFile extends File {
             this._html = FileTemplate.get_instantiation(template.markdown_template, context, "jinja");
         }
         return this._html;
-    }
-
-    public get_base_url(): string {
-        let basename = path.basename(this.name, '.md');
-        return basename + '.html';
     }
 
     on_change(content: string): void {

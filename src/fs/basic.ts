@@ -8,6 +8,7 @@ const highlight_css = String.raw`<link rel="stylesheet" href="https://cdnjs.clou
 export const mk_stylesheet = [katex_css, highlight_css].join('\n');
 
 export class FNode {
+    // name is the name of the target
     public name: string;
     // modules outside fs should not be aware of the existence of this field
     public dirty: boolean;  // should we read the source and generate the target again
@@ -62,10 +63,19 @@ export class Dir extends FNode {
 
 export class File extends FNode {
     public content: string;
+    public proj_name: string;  // name of this file in the original directory
     constructor(abspath: string, parent_url: string, content: string, is_private: boolean) {
-        super(abspath, parent_url, is_private);
-        this.url = `${parent_url}/${this.get_base_url()}`;
+        const init_name = path.basename(abspath)
+        const init_url = `${parent_url}/${init_name}`
+        super(abspath, init_url, is_private)
+        this.proj_name = init_name
+        this.name = this.base_url_from_proj_name(this.proj_name)
+        this.url = `${parent_url}/${this.name}`
         this.content = content;
+    }
+
+    protected base_url_from_proj_name(proj_name: string) {
+        return proj_name;
     }
 
     // the content of the file to be generated
@@ -73,12 +83,13 @@ export class File extends FNode {
         return this.content;
     }
 
-    // get the filename of the file in the project
+    // get the filename of the file in the original project
     public get_project_name(): string {
-        return this.name;
+        return this.proj_name;
     }
 
     // get the 'base' url of current file
+    // the same as this.name
     public get_base_url(): string {
         return this.name;
     }
@@ -86,6 +97,7 @@ export class File extends FNode {
     public get_url(): string {
         return this.url;
     }
+
 
     public on_change(content: string) {
         this.content = content;

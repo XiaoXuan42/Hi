@@ -6,6 +6,7 @@ import YAML from 'yaml';
 interface ConfigOption {
     path: string | undefined;
     passwd: string | undefined;
+    output: string | undefined;
     config: string | undefined;
     encrypt: boolean | undefined;
     decrypt: boolean | undefined;
@@ -86,7 +87,11 @@ export class Config {
         if ('outputDirectory' in yaml) {
             this.output_dir = yaml.outputDirectory
         } else {
-            this.output_dir = 'output'
+            if (opts.output) {
+                this.output_dir = opts.output
+            } else {
+                this.output_dir = 'output'
+            }
         }
         if (!path.isAbsolute(this.output_dir)) {
             this.output_dir = path.join(this.project_root_dir, this.output_dir);

@@ -10,6 +10,7 @@ program.option('--git_commit', 'git commit');
 program.option('-m, --git_message <message>', 'message for git commit');
 program.option('-k, --passwd <passwd>', "passwd")
 program.option('-c, --config <config_path>', 'configuration file')
+program.option('-o, --output <output_directory>', 'output directory')
 program.option('--encrypt', 'encrypt all files')
 program.option('--decrypt', 'decrypt all files')
 program.parse(process.argv);

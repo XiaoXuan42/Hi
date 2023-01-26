@@ -1,4 +1,4 @@
-import { AES } from 'crypto-js';
+import CryptoJS = require('crypto-js')
 
 let private_scripts: string = String.raw`<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
 <script type="text/javascript">
@@ -55,8 +55,13 @@ let private_scripts: string = String.raw`<script type="text/javascript" src="htt
 </script>`;
 
 export function encrypt(content: string, passwd: string): string {
-    let encrypted = AES.encrypt(content, passwd).toString();
+    let encrypted = CryptoJS.AES.encrypt(content, passwd).toString();
     return encrypted;
+}
+
+export function decrypt(content: string, passwd: string): string {
+    let decrpyted = CryptoJS.AES.decrypt(content, passwd).toString(CryptoJS.enc.Utf8);
+    return decrpyted;
 }
 
 export function get_private_scripts(project_name: string): string {

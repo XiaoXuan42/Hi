@@ -14,11 +14,8 @@ export class Hi {
     private server: Server;
     private converter: Converter;
 
-    constructor(project_root_dir: string) {
-        if (!path.isAbsolute(project_root_dir)) {
-            project_root_dir = path.join(process.cwd(), project_root_dir);
-        }
-        this.config = new Config(project_root_dir);
+    constructor(config: Config) {
+        this.config = config;
         this.filetree = new FileTree(this.config);
         this.converter = new Converter(this.filetree, this.config);
         this.listener = new Listener(this.config, this.filetree, this.converter);

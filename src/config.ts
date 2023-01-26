@@ -3,49 +3,93 @@ import * as fs from 'fs';
 import * as path from 'path';
 import YAML from 'yaml';
 
+interface ConfigOption {
+    path: string | undefined;
+    passwd: string | undefined;
+    config: string | undefined;
+    encrypt: boolean | undefined;
+    decrypt: boolean | undefined;
+}
+
 export class Config {
     // configurations in this block are given in config.yml and remain the same during the livetime of the process
     readonly project_root_dir: string;  // root directory of current project, absolute path
-    readonly config_path: string;  // absolute path
+    readonly config_path: string | undefined;  // absolute path
     readonly file_template_path: string;  // absolute path
     readonly include_files: Set<string>;  // relative path to project_root_dir
     readonly output_dir: string;  // absolute path
     readonly privates: Set<string>;  // relative path
     readonly passwd: string;
+    readonly encrypt: boolean;
+    readonly decrypt: boolean;
     readonly meta: {[name: string]: any};
 
     private file_templates: {[name: string]: string};
+
     /**
      * Configuration of the project
-     * @param project_root_dir root directory of the project, absolute path
+     * @param opts
      */
-    constructor(project_root_dir: string) {
-        this.project_root_dir = project_root_dir;
+    constructor(opts: ConfigOption) {
+        if (opts.path) {
+            if (!path.isAbsolute(opts.path)) {
+                this.project_root_dir = path.join(process.cwd(), opts.path)
+            } else {
+                this.project_root_dir = opts.path
+            }
+        } else {
+            this.project_root_dir = process.cwd()
+        }
         assert(path.isAbsolute(this.project_root_dir));
 
-        this.config_path = path.join(project_root_dir, 'config.yml');
-        const yaml = YAML.parse(fs.readFileSync(this.config_path, 'utf-8'));
+        this.config_path = undefined
+        if (opts.config) {
+            if (!path.isAbsolute(opts.config)) {
+                this.config_path = path.join(process.cwd(), opts.config)
+            } else {
+                this.config_path = opts.config
+            }
+        } else {
+            const candidate_path = path.join(this.project_root_dir, 'config.yml')
+            if (fs.existsSync(candidate_path) && fs.lstatSync(candidate_path).isFile()) {
+                this.config_path = candidate_path
+            }
+        }
+        let yaml: any = {}
+        if (this.config_path) {
+            yaml = YAML.parse(fs.readFileSync(this.config_path, 'utf-8'))
+        }
 
         // fileTemplatePath
-        this.file_template_path = yaml['fileTemplatePath'];
-        if (!path.isAbsolute(this.file_template_path)) {
-            this.file_template_path = path.join(project_root_dir, this.file_template_path);
+        if ('fileTemplatePath' in yaml) {
+            this.file_template_path = yaml.fileTemplatePath
+            if (!path.isAbsolute(this.file_template_path)) {
+                this.file_template_path = path.join(this.project_root_dir, this.file_template_path);
+            }
+        } else {
+            this.file_template_path = path.join(this.project_root_dir, 'templates')
         }
 
         // include
         this.include_files = new Set();
-        for (const file of yaml['include']) {
-            this.include_files.add(file);
+        if ('include' in yaml) {
+            for (const file of yaml.include) {
+                this.include_files.add(file)
+            }
+        } else {
+            for (let fname of fs.readdirSync(this.project_root_dir)) {
+                this.include_files.add(fname)
+            }
         }
 
         // outputDirectory
         if ('outputDirectory' in yaml) {
-            this.output_dir = yaml['outputDirectory'];
+            this.output_dir = yaml.outputDirectory
         } else {
-            this.output_dir = 'output';
+            this.output_dir = 'output'
         }
         if (!path.isAbsolute(this.output_dir)) {
-            this.output_dir = path.join(project_root_dir, this.output_dir);
+            this.output_dir = path.join(this.project_root_dir, this.output_dir);
         }
 
         // privates
@@ -56,19 +100,42 @@ export class Config {
             }
         }
 
+        // load templates
         this.file_templates = {}
         this.reload_file_template()
 
-        this.passwd = yaml['passwd'];
+        // passwd
+        if ('passwd' in yaml) {
+            this.passwd = yaml['passwd']
+        } else {
+            if (opts.passwd) {
+                this.passwd = opts.passwd
+            } else {
+                throw Error("Missing passwd")
+            }
+        }
 
+        // encrpyt and decrypt
+        if (opts.encrypt) {
+            this.encrypt = true
+        } else {
+            this.encrypt = false
+        }
+        if (opts.decrypt) {
+            this.decrypt = true
+        } else {
+            this.decrypt = false
+        }
+
+        // meta
         if ('meta' in yaml) {
-            this.meta = yaml['meta'];
+            this.meta = yaml.meta;
         } else {
             this.meta = {};
         }
-
+        /// meta.project_name
         if (!('project_name' in this.meta)) {
-            this.meta['project_name'] = path.basename(this.output_dir);
+            this.meta.project_name = path.basename(this.output_dir);
         }
     }
 
@@ -77,6 +144,9 @@ export class Config {
     }
 
     public reload_file_template() {
+        if (!fs.existsSync(this.file_template_path) || !fs.lstatSync(this.file_template_path).isDirectory()) {
+            return
+        }
         let templates: string[] = fs.readdirSync(this.file_template_path)
         for (let template of templates) {
             let curpath = `${this.file_template_path}/${template}`
@@ -85,6 +155,10 @@ export class Config {
                 this.file_templates[key] = fs.readFileSync(curpath).toString()
             }
         }
+    }
+
+    public has_template(key: string): boolean {
+        return key in this.file_templates
     }
 
     public get_template(key: string): string {

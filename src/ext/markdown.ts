@@ -25,6 +25,10 @@ export class MarkDownFile extends File {
         this.configure_from_content();
     }
 
+    public static capture(filename: string): boolean {
+        return path.extname(filename) === ".md"
+    }
+
     private configure_from_content() {
         const fm_res = fm.default(this.content);
         this.front_matter = fm_res.attributes;

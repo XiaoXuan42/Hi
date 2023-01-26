@@ -74,6 +74,10 @@ export class File extends FNode {
         this.content = content;
     }
 
+    public static capture(filename: string): boolean {
+        return true
+    }
+
     protected base_url_from_proj_name(proj_name: string) {
         return proj_name;
     }

@@ -14,6 +14,10 @@ export class JinjaFile extends File {
         this.stylesheet = mk_stylesheet;
     }
 
+    public static capture(filename: string): boolean {
+        return path.extname(filename) === ".jinja"
+    }
+
     // convert <markdown>...</markdown> to html
     static convert_mk_tag(old_content: string): string {
         let mkdown_regex = /<markdown>[^]*?<\/markdown>/g;

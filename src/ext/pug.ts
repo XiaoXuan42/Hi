@@ -10,6 +10,10 @@ export class PugFile extends File {
         super(abspath, parent_url, content, is_private);
     }
 
+    public static capture(filename: string): boolean {
+        return path.extname(filename) === ".ext"
+    }
+
     protected base_url_from_proj_name(proj_name: string): string {
         let basename = path.basename(proj_name, ".pug");
         return basename + ".html";

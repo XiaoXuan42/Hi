@@ -2,6 +2,9 @@ import { File, FNode } from './fs/basic';
 import { FileTree } from './fs/filetree';
 import { Config } from './config';
 
+/**
+ * Convert a file node to its content
+ */
 export class Converter {
     public meta: object;
     constructor(public fs: FileTree, public config: Config) {

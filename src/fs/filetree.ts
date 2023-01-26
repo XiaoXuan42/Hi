@@ -1,5 +1,5 @@
 import { Config } from '../config';
-import { generate_file } from './file';
+import { FileGenerator } from './file';
 import { encrypt, get_private_scripts } from '../private';
 import { File, Dir, FNode } from './basic';
 import * as fs from 'fs';
@@ -10,6 +10,7 @@ import * as nunjucks from 'nunjucks'
 export class FileTree {
     private fnode_root: Dir;
     private config: Config;
+    private file_generator: FileGenerator;
 
     constructor(config: Config) {
         this.config = config;
@@ -19,6 +20,7 @@ export class FileTree {
         for (let file of this.config.include_files) {
             include_files.push(file);
         }
+        this.file_generator = new FileGenerator(config)
         this.create_file_tree(this.fnode_root, include_files);
     }
 
@@ -28,7 +30,7 @@ export class FileTree {
      * @returns file
      */
     private add_file(dirnode: Dir, abspath: string, is_private: boolean): File {
-        let new_file: File = generate_file(abspath, dirnode.url, is_private);
+        let new_file: File = this.file_generator.generate_file(abspath, dirnode.url, is_private);
 
         dirnode.insert_project_map(path.basename(abspath), new_file);
         dirnode.insert_url_map(new_file.get_base_url(), new_file);
@@ -42,7 +44,7 @@ export class FileTree {
         delete dirnode.url_map[suburl];
     }
 
-    private encrpyt_content(plaintext: string): string {
+    private private_encrypt(plaintext: string): string {
         const content = encrypt(plaintext, this.config.passwd)
         const output_tag = `<p id="ciphertext" hidden>${content}</p>`
         const context = {
@@ -62,7 +64,7 @@ export class FileTree {
         const output_path = this.url_to_output_path(url);
         if (file.is_private) {
             // encrypt the content of file
-            content = this.encrpyt_content(content)
+            content = this.private_encrypt(content)
         }
         fs.writeFileSync(output_path, content);
     }

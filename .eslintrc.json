@@ -11,8 +11,11 @@
     },
     "rules": {
         "no-unused-vars": "off",
-        "semi": "error",
-        "no-unreachable": "error"
+        "no-unreachable": "error",
+        "no-constant-condition": "off",
+        "no-extra-semi": "error",
+        "semi": ["error", "never"],
+        "indent": ["error", 4]
     },
     "plugins": [
         "@typescript-eslint"

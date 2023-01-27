@@ -1,77 +1,85 @@
-import * as path from 'path';
-import { Config } from '../config';
+import * as path from "path"
+import { Config } from "../config"
 
 const katex_css = String.raw`<link rel="stylesheet" 
 href="https://cdn.jsdelivr.net/npm/katex@0.15.6/dist/katex.min.css"
-integrity="sha384-ZPe7yZ91iWxYumsBEOn7ieg8q/o+qh/hQpSaPow8T6BwALcXSCS6C6fSRPIAnTQs" crossorigin="anonymous">`;
-const highlight_css = String.raw`<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">`;
-export const mk_stylesheet = [katex_css, highlight_css].join('\n');
+integrity="sha384-ZPe7yZ91iWxYumsBEOn7ieg8q/o+qh/hQpSaPow8T6BwALcXSCS6C6fSRPIAnTQs" crossorigin="anonymous">`
+const highlight_css = String.raw`<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">`
+export const mk_stylesheet = [katex_css, highlight_css].join("\n")
 
 export class FNode {
     // name is the name of the target
-    public name: string;
+    public name: string
     // modules outside fs should not be aware of the existence of this field
-    public dirty: boolean;  // should we read the source and generate the target again
-    constructor(public abspath: string, public url: string, public is_private: boolean) {
-        this.name = path.basename(abspath);
-        this.dirty = false;
+    public dirty: boolean // should we read the source and generate the target again
+    constructor(
+        public abspath: string,
+        public url: string,
+        public is_private: boolean
+    ) {
+        this.name = path.basename(abspath)
+        this.dirty = false
     }
 
     public get_base_url(): string {
-        return this.name;
+        return this.name
     }
 
     public get_url(): string {
-        return this.url;
+        return this.url
     }
 }
 
 export class Dir extends FNode {
-    public project_map: { [name: string]: FNode };  // access through name in the project
-    public url_map: { [name: string]: FNode };  // access through name in the target(url)
+    public project_map: { [name: string]: FNode } // access through name in the project
+    public url_map: { [name: string]: FNode } // access through name in the target(url)
 
     constructor(abspath: string, url: string, is_private: boolean) {
-        super(abspath, url, is_private);
-        this.project_map = {};
-        this.url_map = {};
+        super(abspath, url, is_private)
+        this.project_map = {}
+        this.url_map = {}
     }
 
     public insert_project_map(name: string, fnode: FNode) {
         if (name in this.project_map) {
-            throw Error(`${name} under ${this.abspath} already exists.`);
+            throw Error(`${name} under ${this.abspath} already exists.`)
         }
-        this.project_map[name] = fnode;
+        this.project_map[name] = fnode
     }
 
     public insert_url_map(url: string, fnode: FNode) {
         if (url in this.url_map) {
             throw Error(`Url ${url} under ${this.url} already exists.`)
         }
-        this.url_map[url] = fnode;
+        this.url_map[url] = fnode
     }
 
     public putdown_dirty() {
         if (this.dirty) {
-            this.dirty = false;
+            this.dirty = false
             for (let url in this.url_map) {
-                this.url_map[url].dirty = true;
+                this.url_map[url].dirty = true
             }
         }
     }
 }
 
-
 export class File extends FNode {
-    public content: string;
-    public proj_name: string;  // name of this file in the original directory
-    constructor(abspath: string, parent_url: string, content: string, is_private: boolean) {
+    public content: string
+    public proj_name: string // name of this file in the original directory
+    constructor(
+        abspath: string,
+        parent_url: string,
+        content: string,
+        is_private: boolean
+    ) {
         const init_name = path.basename(abspath)
         const init_url = `${parent_url}/${init_name}`
         super(abspath, init_url, is_private)
         this.proj_name = init_name
         this.name = this.base_url_from_proj_name(this.proj_name)
         this.url = `${parent_url}/${this.name}`
-        this.content = content;
+        this.content = content
     }
 
     public static capture(filename: string): boolean {
@@ -79,35 +87,34 @@ export class File extends FNode {
     }
 
     protected base_url_from_proj_name(proj_name: string) {
-        return proj_name;
+        return proj_name
     }
 
     // the content of the file to be generated
     public output(config: Config, context: any): string {
-        return this.content;
+        return this.content
     }
 
     // get the filename of the file in the original project
     public get_project_name(): string {
-        return this.proj_name;
+        return this.proj_name
     }
 
     // get the 'base' url of current file
     // the same as this.name
     public get_base_url(): string {
-        return this.name;
+        return this.name
     }
 
     public get_url(): string {
-        return this.url;
+        return this.url
     }
 
-
     public on_change(content: string) {
-        this.content = content;
+        this.content = content
     }
 
     public get_class_name(): string {
-        return this.constructor.name;
+        return this.constructor.name
     }
 }

@@ -1,10 +1,15 @@
-import { File } from '../fs/basic';
-import { Config } from '../config';
-import { decrypt } from '../private';
+import { File } from "../fs/basic"
+import { Config } from "../config"
+import { decrypt } from "../private"
 
 export class DecryptFile extends File {
-    private _decrypted: undefined | string;
-    constructor(abspath: string, parent_url: string, content: string, is_private: boolean) {
+    private _decrypted: undefined | string
+    constructor(
+        abspath: string,
+        parent_url: string,
+        content: string,
+        is_private: boolean
+    ) {
         super(abspath, parent_url, content, is_private)
     }
 
@@ -23,5 +28,4 @@ export class DecryptFile extends File {
         super.on_change(content)
         this._decrypted = undefined
     }
-
 }

@@ -1,4 +1,4 @@
-import CryptoJS = require('crypto-js')
+import CryptoJS = require("crypto-js")
 
 let private_scripts: string = String.raw`<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
 <script type="text/javascript">
@@ -52,18 +52,23 @@ let private_scripts: string = String.raw`<script type="text/javascript" src="htt
       submit_passwd(passwd);
     }
   }
-</script>`;
+</script>`
 
 export function encrypt(content: string, passwd: string): string {
-    let encrypted = CryptoJS.AES.encrypt(content, passwd).toString();
-    return encrypted;
+    let encrypted = CryptoJS.AES.encrypt(content, passwd).toString()
+    return encrypted
 }
 
 export function decrypt(content: string, passwd: string): string {
-    let decrpyted = CryptoJS.AES.decrypt(content, passwd).toString(CryptoJS.enc.Utf8);
-    return decrpyted;
+    let decrpyted = CryptoJS.AES.decrypt(content, passwd).toString(
+        CryptoJS.enc.Utf8
+    )
+    return decrpyted
 }
 
 export function get_private_scripts(project_name: string): string {
-    return private_scripts.replaceAll('_hi_private_passwd', `_hi_private_${project_name}_passwd`);
+    return private_scripts.replaceAll(
+        "_hi_private_passwd",
+        `_hi_private_${project_name}_passwd`
+    )
 }

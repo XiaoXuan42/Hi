@@ -1,31 +1,32 @@
-import { assert } from 'console';
-import * as fs from 'fs';
-import * as path from 'path';
-import YAML from 'yaml';
+import { assert } from "console"
+import * as fs from "fs"
+import * as path from "path"
+import * as process from 'process'
+import YAML from "yaml"
 
 interface ConfigOption {
-    path: string | undefined;
-    passwd: string | undefined;
-    output: string | undefined;
-    config: string | undefined;
-    encrypt: boolean | undefined;
-    decrypt: boolean | undefined;
+    path: string | undefined
+    passwd: string | undefined
+    output: string | undefined
+    config: string | undefined
+    encrypt: boolean | undefined
+    decrypt: boolean | undefined
 }
 
 export class Config {
     // configurations in this block are given in config.yml and remain the same during the livetime of the process
-    readonly project_root_dir: string;  // root directory of current project, absolute path
-    readonly config_path: string | undefined;  // absolute path
-    readonly file_template_path: string;  // absolute path
-    readonly include_files: Set<string>;  // relative path to project_root_dir
-    readonly output_dir: string;  // absolute path
-    readonly privates: Set<string>;  // relative path
-    readonly passwd: string;
-    readonly encrypt: boolean;
-    readonly decrypt: boolean;
-    readonly meta: {[name: string]: any};
+    readonly project_root_dir: string // root directory of current project, absolute path
+    readonly config_path: string | undefined // absolute path
+    readonly file_template_path: string // absolute path
+    readonly include_files: Set<string> // relative path to project_root_dir
+    readonly output_dir: string // absolute path
+    readonly privates: Set<string> // relative path
+    readonly passwd: string
+    readonly encrypt: boolean
+    readonly decrypt: boolean
+    readonly meta: { [name: string]: any }
 
-    private file_templates: {[name: string]: string};
+    private file_templates: { [name: string]: string }
 
     /**
      * Configuration of the project
@@ -41,7 +42,7 @@ export class Config {
         } else {
             this.project_root_dir = process.cwd()
         }
-        assert(path.isAbsolute(this.project_root_dir));
+        assert(path.isAbsolute(this.project_root_dir))
 
         this.config_path = undefined
         if (opts.config) {
@@ -51,29 +52,41 @@ export class Config {
                 this.config_path = opts.config
             }
         } else {
-            const candidate_path = path.join(this.project_root_dir, 'config.yml')
-            if (fs.existsSync(candidate_path) && fs.lstatSync(candidate_path).isFile()) {
+            const candidate_path = path.join(
+                this.project_root_dir,
+                "config.yml"
+            )
+            if (
+                fs.existsSync(candidate_path) &&
+                fs.lstatSync(candidate_path).isFile()
+            ) {
                 this.config_path = candidate_path
             }
         }
         let yaml: any = {}
         if (this.config_path) {
-            yaml = YAML.parse(fs.readFileSync(this.config_path, 'utf-8'))
+            yaml = YAML.parse(fs.readFileSync(this.config_path, "utf-8"))
         }
 
         // fileTemplatePath
-        if ('fileTemplatePath' in yaml) {
+        if ("fileTemplatePath" in yaml) {
             this.file_template_path = yaml.fileTemplatePath
             if (!path.isAbsolute(this.file_template_path)) {
-                this.file_template_path = path.join(this.project_root_dir, this.file_template_path);
+                this.file_template_path = path.join(
+                    this.project_root_dir,
+                    this.file_template_path
+                )
             }
         } else {
-            this.file_template_path = path.join(this.project_root_dir, 'templates')
+            this.file_template_path = path.join(
+                this.project_root_dir,
+                "templates"
+            )
         }
 
         // include
-        this.include_files = new Set();
-        if ('include' in yaml) {
+        this.include_files = new Set()
+        if ("include" in yaml) {
             for (const file of yaml.include) {
                 this.include_files.add(file)
             }
@@ -84,24 +97,24 @@ export class Config {
         }
 
         // outputDirectory
-        if ('outputDirectory' in yaml) {
+        if ("outputDirectory" in yaml) {
             this.output_dir = yaml.outputDirectory
         } else {
             if (opts.output) {
                 this.output_dir = opts.output
             } else {
-                this.output_dir = 'output'
+                this.output_dir = "output"
             }
         }
         if (!path.isAbsolute(this.output_dir)) {
-            this.output_dir = path.join(this.project_root_dir, this.output_dir);
+            this.output_dir = path.join(this.project_root_dir, this.output_dir)
         }
 
         // privates
-        this.privates = new Set<string>();
-        if ('privates' in yaml) {
-            for (let file of yaml['privates']) {
-                this.privates.add(file);
+        this.privates = new Set<string>()
+        if ("privates" in yaml) {
+            for (let file of yaml["privates"]) {
+                this.privates.add(file)
             }
         }
 
@@ -110,8 +123,8 @@ export class Config {
         this.reload_file_template()
 
         // passwd
-        if ('passwd' in yaml) {
-            this.passwd = yaml['passwd']
+        if ("passwd" in yaml) {
+            this.passwd = yaml["passwd"]
         } else {
             if (opts.passwd) {
                 this.passwd = opts.passwd
@@ -133,23 +146,26 @@ export class Config {
         }
 
         // meta
-        if ('meta' in yaml) {
-            this.meta = yaml.meta;
+        if ("meta" in yaml) {
+            this.meta = yaml.meta
         } else {
-            this.meta = {};
+            this.meta = {}
         }
         /// meta.project_name
-        if (!('project_name' in this.meta)) {
-            this.meta.project_name = path.basename(this.output_dir);
+        if (!("project_name" in this.meta)) {
+            this.meta.project_name = path.basename(this.output_dir)
         }
     }
 
     public get_project_name() {
-        return this.meta['project_name'];
+        return this.meta["project_name"]
     }
 
     public reload_file_template() {
-        if (!fs.existsSync(this.file_template_path) || !fs.lstatSync(this.file_template_path).isDirectory()) {
+        if (
+            !fs.existsSync(this.file_template_path) ||
+            !fs.lstatSync(this.file_template_path).isDirectory()
+        ) {
             return
         }
         let templates: string[] = fs.readdirSync(this.file_template_path)
@@ -167,31 +183,31 @@ export class Config {
     }
 
     public get_template(key: string): string {
-        return this.file_templates[key];
+        return this.file_templates[key]
     }
 
     public is_inside_project(abspath: string): boolean {
-        assert(path.isAbsolute(abspath));
-        return abspath.startsWith(this.project_root_dir);
+        assert(path.isAbsolute(abspath))
+        return abspath.startsWith(this.project_root_dir)
     }
 
     public is_included(abspath: string): boolean {
-        assert(path.isAbsolute(abspath));
+        assert(path.isAbsolute(abspath))
         for (const file of this.include_files) {
             if (abspath.startsWith(path.join(this.project_root_dir, file))) {
-                return true;
+                return true
             }
         }
-        return false;
+        return false
     }
 
     public is_config(abspath: string): boolean {
-        assert(path.isAbsolute(abspath));
-        return abspath === this.config_path;
+        assert(path.isAbsolute(abspath))
+        return abspath === this.config_path
     }
 
     public is_file_template(abspath: string): boolean {
-        assert(path.isAbsolute(abspath));
-        return abspath.startsWith(this.file_template_path);
+        assert(path.isAbsolute(abspath))
+        return abspath.startsWith(this.file_template_path)
     }
 }

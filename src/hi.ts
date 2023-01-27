@@ -4,7 +4,7 @@ import { Config } from "./config"
 import { FileTree } from "./fs/filetree"
 import { Listener } from "./listen"
 import { Server } from "./server"
-import { Converter } from "./converter"
+import { Transformer } from "./transform"
 import { execSync } from "child_process"
 
 export class Hi {
@@ -12,20 +12,22 @@ export class Hi {
     private filetree: FileTree
     private listener: Listener
     private server: Server
-    private converter: Converter
+    private transformer: Transformer
 
     constructor(config: Config) {
         this.config = config
         this.filetree = new FileTree(this.config)
-        this.converter = new Converter(this.filetree, this.config)
-        this.listener = new Listener(this.config, this.filetree, this.converter)
-        this.server = new Server(this.filetree, this.converter)
+        this.transformer = new Transformer(this.filetree, this.config)
+        this.listener = new Listener(
+            this.config,
+            this.filetree,
+            this.transformer
+        )
+        this.server = new Server(this.filetree, this.transformer)
     }
 
     public generate() {
-        this.filetree.clear_and_write(
-            this.converter.convert.bind(this.converter)
-        )
+        this.filetree.clear_and_write(this.transformer.get_convert_fn())
     }
 
     public git_commit(message: string): string {

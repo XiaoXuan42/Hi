@@ -1,10 +1,10 @@
 import { FileTree } from "./fs/filetree"
-import { Converter } from "./converter"
+import { Transformer } from "./transform"
 import * as http from "http"
 
 export class Server {
     server: http.Server | undefined
-    constructor(public filetree: FileTree, public converter: Converter) {}
+    constructor(public filetree: FileTree, public converter: Transformer) {}
 
     start() {
         const port = 8080

@@ -5,8 +5,9 @@ import { Config } from "./config"
 /**
  * Convert a file node to its content
  */
-export class Converter {
+export class Transformer {
     public meta: object
+    // fs, config, meta is used for transform(variable passed to the jinja)
     constructor(public fs: FileTree, public config: Config) {
         this.meta = config.meta
     }

@@ -1,6 +1,6 @@
 import { Config } from "./config"
 import { FileTree } from "./fs/filetree"
-import { Converter } from "./converter"
+import { Transformer } from "./transform"
 import * as chokidar from "chokidar"
 import * as fs from "fs"
 import { assert } from "console"
@@ -14,7 +14,7 @@ export class Listener {
     constructor(
         public config: Config,
         public filetree: FileTree,
-        public converter: Converter
+        public converter: Transformer
     ) {
         this.change_set = new Set()
         this.remove_set = new Set()

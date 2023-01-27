@@ -263,7 +263,7 @@ export class FileTree {
         }
     }
 
-    public clear_and_write(converter: (fnode: File) => string) {
+    public clear_and_write(transform: (fnode: File) => string) {
         // remove all contents inside output directory except files begin with dot
         if (fs.existsSync(this.config.output_dir)) {
             const files = fs.readdirSync(this.config.output_dir)
@@ -274,7 +274,7 @@ export class FileTree {
                 }
             }
         }
-        this.visit_url(converter, (node, res: string) => {
+        this.visit_url(transform, (node, res: string) => {
             assert(node instanceof File && res)
             if (node instanceof File) {
                 assert(!node.dirty)

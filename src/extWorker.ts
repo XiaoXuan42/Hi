@@ -11,28 +11,42 @@ import { FsWorker } from "./fsWorker"
 import { HiMarkConfig, HiMarkFactor, HiMark } from "./extensions/HiMark/hiMark"
 
 class DefaultExtension implements Extension {
-    public async transform(
-        file: File,
-        fsWorker: FsWorker
-    ): Promise<ExtensionResult> {
-        return fsWorker
+    private fsWorker: FsWorker
+
+    constructor(fsWorker: FsWorker) {
+        this.fsWorker = fsWorker
+    }
+
+    public async map(file: File) {
+        return this.fsWorker
             .readSrc(file.getRelPath())
             .then((buffer) => {
-                return {
-                    filename: file.getBasename(),
-                    content: buffer,
-                    succ: true,
-                    errMsg: "",
-                }
+                file.content = buffer
+                file.data = true
             })
             .catch((_) => {
-                return {
-                    filename: undefined,
-                    content: "",
-                    succ: false,
-                    errMsg: `Can't open ${file.getRelPath()}`,
-                }
+                file.data = undefined
             })
+    }
+
+    public async reduce(file: File): Promise<ExtensionResult[]> {
+        const filename = file.getBasename()
+        const targetRelPath = this.fsWorker.join(file.getDirname(), filename)
+        let result: ExtensionResult = {
+            file: file,
+            targetRelPath: targetRelPath,
+            filename: filename,
+            content: "",
+            succ: true,
+            errMsg: "",
+        }
+        if (file.data === undefined) {
+            result.succ = false
+            result.errMsg = `Failed to read ${file.getRelPath()}`
+        } else {
+            result.content = file.content
+        }
+        return [result]
     }
 }
 
@@ -47,7 +61,7 @@ export class ExtWorker {
         this.config = config
         this.name2ext = {}
         this.cfg2ext = new Map()
-        this.defaultExt = new DefaultExtension()
+        this.defaultExt = new DefaultExtension(fsWorker)
         this.patternExts = [...this.config.extensions]
 
         this.register(

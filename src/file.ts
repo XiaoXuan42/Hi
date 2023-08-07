@@ -1,10 +1,15 @@
 import * as path from "node:path"
+import { Buffer } from "node:buffer"
 
 export class File {
     private relPath: string
+    public data: any
+    public content: string | Buffer
 
     constructor(relPath: string) {
         this.relPath = relPath
+        this.data = undefined
+        this.content = ""
     }
 
     public getRelPath(): string {

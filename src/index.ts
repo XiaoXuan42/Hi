@@ -20,7 +20,7 @@ if (opts.config) {
 }
 let config = new Config(opts.path, config_path)
 let hi = new Hi(config)
-hi.generateInit()
+hi.initGenerate()
 if (opts.git_commit) {
     let date = new Date()
     let message = `"${date.toUTCString()}"`

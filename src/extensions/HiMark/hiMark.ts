@@ -4,6 +4,7 @@ import {
     ExtensionFactor,
     ExtensionResult,
 } from "../../extension"
+import { Buffer } from "node:buffer"
 import { FsWorker } from "../../fsWorker"
 import { File } from "../../file"
 import { MarkDownBackend, MarkDownBackendConfig } from "./markdown"
@@ -58,20 +59,38 @@ export class HiMark implements Extension {
         }
     }
 
-    public async transform(
-        file: File,
-        fsWorker: FsWorker
-    ): Promise<ExtensionResult> {
-        let [fname, extname] = file.getFileAndExtName()
-        const content = await fsWorker
+    public async map(file: File) {
+        await this.fsWorker
             .readSrc(file.getRelPath())
-            .then((buffer) => buffer.toString("utf-8"))
+            .then((buffer) => {
+                file.content = buffer.toString("utf-8")
+                file.data = true
+            })
+            .catch((_) => {
+                file.data = undefined
+            })
+    }
+
+    public async reduce(file: File): Promise<ExtensionResult[]> {
+        let [fname, extname] = file.getFileAndExtName()
+        const filename = fname + ".html"
+        const targetRelPath = this.fsWorker.join(file.getDirname(), filename)
+        let content: string
+        if (file.content instanceof Buffer) {
+            content = file.content.toString("utf-8")
+        } else {
+            content = file.content
+        }
+
         let result: ExtensionResult = {
-            filename: fname + ".html",
+            file: file,
+            targetRelPath: targetRelPath,
+            filename: filename,
             content: content,
             succ: true,
             errMsg: "",
         }
+
         let isPrivate = false
         if (this.config.private) {
             for (let privatePattern of this.config.private.files) {
@@ -99,7 +118,7 @@ export class HiMark implements Extension {
                 this.config.private.passwd
             )
         }
-        return result
+        return [result]
     }
 }
 

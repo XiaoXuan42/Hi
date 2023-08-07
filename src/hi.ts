@@ -1,47 +1,109 @@
-import * as path from "path"
-import * as process from "process"
 import { Config } from "./config"
-import { FileTree } from "./fs/filetree"
-import { Listener } from "./listen"
-import { Server } from "./server"
-import { Transformer } from "./transform"
+import { ExtWorker } from "./extWorker"
+import { File } from "./file"
 import { execSync } from "child_process"
+import { FsWorker } from "./fsWorker"
+import { Listener } from "./listen"
+import { ExtensionConfig, Extension } from "./extension"
 
 export class Hi {
-    private config: Config
-    private filetree: FileTree
+    readonly config: Config
+    private fsWorker: FsWorker
     private listener: Listener
-    private server: Server
-    private transformer: Transformer
+    private listenIntervalId: number | undefined
+    public extWorker: ExtWorker
 
     constructor(config: Config) {
         this.config = config
-        this.filetree = new FileTree(this.config)
-        this.transformer = new Transformer(this.filetree, this.config)
-        this.listener = new Listener(
-            this.config,
-            this.filetree,
-            this.transformer
-        )
-        this.server = new Server(this.filetree, this.transformer)
+        this.extWorker = new ExtWorker(config)
+        this.fsWorker = new FsWorker(config)
+        this.listener = new Listener(config)
     }
 
-    public generate() {
-        this.filetree.clear_and_write(this.transformer.get_convert_fn())
+    private async _writeFile(
+        file: File,
+        ext: Extension,
+        extConfig: ExtensionConfig
+    ) {
+        const result = await ext.transform(file, extConfig, this.fsWorker)
+        if (result.succ) {
+            if (result.filename) {
+                await this.fsWorker
+                    .writeTarget(file.getRelPath(), result.content)
+                    .catch((reason) => {
+                        console.log(
+                            `Failed to write ${file.getRelPath()}: ${reason}`
+                        )
+                    })
+            }
+        } else {
+            console.log(
+                `Failed to generate file for ${file.getRelPath()}: ${
+                    result.errMsg
+                }`
+            )
+        }
     }
 
-    public git_commit(message: string): string {
+    private async generateFromPathRecurInit(p: string) {
+        // p is relative path
+        return this.fsWorker
+            .lstatSrc(p)
+            .then(async (stat) => {
+                if (stat.isDirectory()) {
+                    await this.fsWorker.mkdirTarget(p)
+                    const files = await this.fsWorker.readdirSrc(p)
+                    const promises = []
+                    for (let file of files) {
+                        const relpath = this.fsWorker.join(p, file)
+                        promises.push(this.generateFromPathRecurInit(relpath))
+                    }
+                    await Promise.all(promises)
+                } else {
+                    const file = new File(p)
+                    const [ext, extConfig] = this.extWorker.getExtension(file)
+                    await this._writeFile(file, ext, extConfig)
+                }
+            }, (reason) => {
+                console.log(`Failed to lstat ${p}: ${reason}`)
+            })
+    }
+
+    public async generateInit() {
+        const promises = []
+        for (const p of this.config.includes) {
+            promises.push(this.generateFromPathRecurInit(p))
+        }
+        return Promise.all(promises)
+    }
+
+    public gitCommit(message: string): string {
         const git_out = execSync(`git add . && git commit -m ${message}`, {
-            cwd: this.config.output_dir,
+            cwd: this.config.outputDir,
         })
         const push_out = execSync(`git push`, {
-            cwd: this.config.output_dir,
+            cwd: this.config.outputDir,
         })
         return `${git_out.toString()}\n${push_out.toString()}`
     }
 
-    public live() {
-        this.listener.listen()
-        this.server.start()
+    public async listen() {
+        // TODO
+        return this.listener
+            .listenInit()
+            .then((_) => {
+                return undefined
+            })
+            .catch((_) => {
+                console.log("Failed to listen")
+            })
     }
+
+    public unlisten() {
+        if (this.listenIntervalId) {
+            clearInterval(this.listenIntervalId)
+        }
+    }
+
+    public async live() {}
 }

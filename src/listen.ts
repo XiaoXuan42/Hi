@@ -1,78 +1,44 @@
 import { Config } from "./config"
-import { FileTree } from "./fs/filetree"
-import { Transformer } from "./transform"
 import * as chokidar from "chokidar"
-import * as fs from "fs"
-import { assert } from "console"
 
 export class Listener {
-    change_set: Set<string>
-    remove_set: Set<string>
-    add_set: Set<string>
-    watcher: chokidar.FSWatcher | undefined
+    private config: Config
+    private changeSet: Set<string>
+    private removeSet: Set<string>
+    private watcher: chokidar.FSWatcher | undefined
 
-    constructor(
-        public config: Config,
-        public filetree: FileTree,
-        public converter: Transformer
-    ) {
-        this.change_set = new Set()
-        this.remove_set = new Set()
-        this.add_set = new Set()
+    constructor(config: Config) {
+        this.config = config
+        this.changeSet = new Set()
+        this.removeSet = new Set()
     }
 
-    listen() {
-        this.listen_init()
-        setInterval(this.update.bind(this), 500)
+    public clearAll() {
+        this.changeSet.clear()
+        this.removeSet.clear()
     }
 
-    private listen_init() {
-        if (!this.watcher) {
-            this.watcher = chokidar.watch(this.config.project_root_dir, {
+    public async listenInit() {
+        if (this.watcher) {
+            this.clearAll()
+            await this.watcher.close()
+        }
+        this.watcher = chokidar
+            .watch(this.config.projectRootDir, {
                 ignoreInitial: true,
             })
-            this.watcher.on("change", (path, stat) => {
-                this.change_set.add(path)
+            .on("change", (path, stat) => {
+                this.changeSet.add(path)
             })
-            this.watcher.on("add", (path) => {
-                this.add_set.add(path)
+            .on("add", (path) => {
+                this.changeSet.add(path)
             })
-            this.watcher.on("unlink", (path) => {
-                this.remove_set.add(path)
+            .on("unlink", (path) => {
+                this.removeSet.add(path)
             })
-        }
     }
 
-    private update() {
-        const updated = new Set()
-        for (const abspath of this.add_set) {
-            if (fs.existsSync(abspath)) {
-                updated.add(abspath)
-                this.filetree.on_add(abspath, this.converter.get_convert_fn())
-            }
-        }
-        for (const abspath of this.remove_set) {
-            if (!fs.existsSync(abspath)) {
-                this.filetree.on_unlink(abspath)
-            }
-        }
-        for (const abspath of this.change_set) {
-            if (!updated.has(abspath) && fs.existsSync(abspath)) {
-                assert(!this.config.is_config(abspath)) // modification on config is not supported
-                if (this.config.is_file_template(abspath)) {
-                    this.config.reload_file_template()
-                    this.filetree.reload_all_lazy()
-                } else if (this.config.is_included(abspath)) {
-                    this.filetree.on_change(
-                        abspath,
-                        this.converter.convert.bind(this.converter)
-                    )
-                }
-                updated.add(abspath)
-            }
-        }
-        this.add_set.clear()
-        this.remove_set.clear()
-        this.change_set.clear()
+    public getModification(): [Set<string>, Set<string>] {
+        return [this.changeSet, this.removeSet]
     }
 }

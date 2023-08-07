@@ -30,6 +30,7 @@
     "highlight.js": "^11.5.1",
     "katex": "^0.15.6",
     "marked": "^4.0.12",
+    "minimatch": "^9.0.3",
     "nunjucks": "^3.2.3",
     "pug": "^3.0.2",
     "yaml": "^1.10.2"

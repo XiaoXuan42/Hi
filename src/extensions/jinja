@@ -12,9 +12,8 @@ export class JinjaFile extends File {
         abspath: string,
         parent_url: string,
         content: string,
-        is_private: boolean
     ) {
-        super(abspath, parent_url, content, is_private)
+        super(abspath, parent_url, content)
         this._converted_content = JinjaFile.convert_mk_tag(this.content)
         this.stylesheet = mk_stylesheet
     }

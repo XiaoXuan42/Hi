@@ -1,27 +1,29 @@
-import { FileTree } from "./fs/filetree"
-import { Transformer } from "./transform"
 import * as http from "http"
+import { File } from "./file"
+import { Config } from "./config"
+import { FsWorker } from "./fsWorker"
 
 export class Server {
+    private config: Config
+    private fsWorker: FsWorker
     server: http.Server | undefined
-    constructor(public filetree: FileTree, public converter: Transformer) {}
 
-    start() {
-        const port = 8080
+    constructor(config: Config, fsWorker: FsWorker) {
+        this.config = config
+        this.fsWorker = fsWorker
+    }
+
+    public start(port = 8080) {
         this.server = http.createServer((req, res) => {
             if (req.url) {
                 req.url = decodeURI(req.url)
-                const content = this.filetree.get_result_content(
-                    req.url,
-                    this.converter.get_convert_fn()
-                )
-                if (content) {
+                this.fsWorker.readSrc(req.url).then((content) => {
                     res.writeHead(200)
                     res.end(content)
-                } else {
+                }).catch((reason) => {
                     res.writeHead(404)
-                    res.end(`${req.url} not found.`)
-                }
+                    res.end(`${req.url} failed: ${reason}`)
+                })
             } else {
                 res.writeHead(404)
                 res.end("No url provided.")

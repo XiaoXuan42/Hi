@@ -19,9 +19,8 @@ export class MarkDownFile extends File {
         abspath: string,
         parent_url: string,
         content: string,
-        is_private: boolean
     ) {
-        super(abspath, parent_url, content, is_private)
+        super(abspath, parent_url, content)
         this.html = ""
         this.stylesheet = ""
         this.date = new Date()

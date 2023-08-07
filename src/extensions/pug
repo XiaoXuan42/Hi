@@ -10,9 +10,8 @@ export class PugFile extends File {
         abspath: string,
         parent_url: string,
         content: string,
-        is_private: boolean
     ) {
-        super(abspath, parent_url, content, is_private)
+        super(abspath, parent_url, content)
     }
 
     public static capture(filename: string): boolean {

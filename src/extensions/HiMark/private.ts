@@ -1,6 +1,15 @@
-import CryptoJS = require("crypto-js")
+import CryptoJS from "crypto-js"
+import { FsWorker } from "../../fsWorker"
+import * as nunjucks from "nunjucks"
 
-let private_scripts: string = String.raw`<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
+/**
+ * Ciphertext is assumed to be stored at the innerText of the tag that has id "ciphertext".
+ * Old passwd that was correct is stored as _hi_private_${project_name}_passwd in localStorage.
+ *
+ * submit_passwd:
+ *    If the passwd is correct, the original content will be recovered
+ */
+let privateScripts: string = String.raw`<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
 <script type="text/javascript">
   function set_passwd_storage(value) {
     var date = new Date();
@@ -54,21 +63,84 @@ let private_scripts: string = String.raw`<script type="text/javascript" src="htt
   }
 </script>`
 
-export function encrypt(content: string, passwd: string): string {
+function encrypt(content: string, passwd: string): string {
     let encrypted = CryptoJS.AES.encrypt(content, passwd).toString()
     return encrypted
 }
 
-export function decrypt(content: string, passwd: string): string {
+function decrypt(content: string, passwd: string): string {
     let decrpyted = CryptoJS.AES.decrypt(content, passwd).toString(
         CryptoJS.enc.Utf8
     )
     return decrpyted
 }
 
-export function get_private_scripts(project_name: string): string {
-    return private_scripts.replaceAll(
+function getPrivateScripts(project_name: string): string {
+    return privateScripts.replaceAll(
         "_hi_private_passwd",
         `_hi_private_${project_name}_passwd`
     )
+}
+
+const defaultPrivateTemplate = String.raw`<!DOCTYPE html>
+
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Password</title>
+</head>
+
+<body>
+<div class="container">
+{{ ciphertext | safe }}
+<input id="passwd_box" type="text" onkeydown="keydown()"/>
+</div>
+</body>
+{{ privateScripts | safe }}
+<script type="text/javascript">
+function keydown() {
+    if (event.keyCode === 13) {
+        var i = document.getElementById('passwd_box');
+        submit_passwd(i.value);
+    }
+}
+</script>
+</html>`
+
+export class PrivateBackendConfig {
+    public templatePath?: string
+    public keyName: string
+    public passwd: string
+    public files: string[]
+
+    constructor(keyName: string, passwd: string, files: string[]) {
+        this.keyName = keyName
+        this.passwd = passwd
+        this.files = files
+    }
+}
+
+export class PrivateBackend {
+    private templateStr: string
+
+    constructor(config: PrivateBackendConfig, fsWorker: FsWorker) {
+        if (config.templatePath) {
+            this.templateStr = fsWorker
+                .readSrcSync(config.templatePath)
+                .toString("utf-8")
+        } else {
+            this.templateStr = defaultPrivateTemplate
+        }
+    }
+
+    public transform(keyName: string, content: string, passwd: string) {
+        let newContent = encrypt(content, passwd)
+        const outputTag = `<p id="ciphertext" hidden>${newContent}</p>`
+        const context = {
+            ciphertext: outputTag,
+            privateScripts: getPrivateScripts(keyName),
+        }
+        return nunjucks.renderString(this.templateStr, context)
+    }
 }

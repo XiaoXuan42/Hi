@@ -3,7 +3,7 @@ import { ExtensionConfig } from "./extension"
 import * as path from "node:path"
 
 type ExtItem = {
-    pattern: string,
+    pattern: string
     config: ExtensionConfig
 }
 
@@ -12,22 +12,23 @@ export class Config {
     readonly outputDir: string
     readonly includes: string[]
     readonly extensions: ExtItem[]
+    readonly passwd: string
+
+    private getOrSet(json: any, key: string, d: any) {
+        if (json[key]) {
+            return json[key]
+        } else {
+            return d
+        }
+    }
 
     constructor(projectRootDir: string, jsonFile: string) {
         this.projectRootDir = path.resolve(projectRootDir)
-        const file = fs.readFileSync(jsonFile, 'utf-8')
+        const file = fs.readFileSync(jsonFile, "utf-8")
         const json = JSON.parse(file)
-        this.outputDir = json["outputDir"]
-        if (!this.outputDir) {
-            this.outputDir = "out"
-        }
-        this.includes = json["includes"]
-        if (!this.includes) {
-            this.includes = []
-        }
-        this.extensions = json["extensions"]
-        if (!this.extensions) {
-            this.extensions = []
-        }
+        this.outputDir = this.getOrSet(json, "outputDir", "out")
+        this.includes = this.getOrSet(json, "includes", [])
+        this.extensions = this.getOrSet(json, "extensions", [])
+        this.passwd = this.getOrSet(json, "passwd", "123qwe!")
     }
 }

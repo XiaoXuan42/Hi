@@ -8,6 +8,7 @@ import {
 import { minimatch } from "minimatch"
 import { File } from "./file"
 import { FsWorker } from "./fsWorker"
+import { HiMarkConfig, HiMarkFactor, HiMark } from "./extensions/HiMark/hiMark"
 
 class DefaultExtension implements Extension {
     public async transform(
@@ -42,12 +43,21 @@ export class ExtWorker {
     private cfg2ext: Map<ExtensionConfig, Extension>
     private defaultExt: Extension
 
-    constructor(config: Config) {
+    constructor(config: Config, fsWorker: FsWorker) {
         this.config = config
         this.name2ext = {}
         this.cfg2ext = new Map()
         this.defaultExt = new DefaultExtension()
         this.patternExts = [...this.config.extensions]
+
+        this.register(
+            HiMark.extname,
+            "**/*.{md,html,jinja,pug}",
+            new HiMarkConfig(),
+            HiMarkFactor,
+            fsWorker,
+            false
+        )
     }
 
     private match(p: string, pattern: string): boolean {
@@ -73,15 +83,33 @@ export class ExtWorker {
         return this.defaultExt
     }
 
-    public registerWithFactor(name: string, extFactor: ExtensionFactor) {
+    public registerWithFactor(
+        name: string,
+        extFactor: ExtensionFactor,
+        top = true
+    ) {
+        if (!top && name in this.name2ext) {
+            return
+        }
         this.name2ext[name] = extFactor
     }
 
-    public registerWithConfig(pattern: string, config: ExtensionConfig) {
-        this.patternExts.unshift({
-            pattern: pattern,
-            config: config,
-        })
+    public registerWithConfig(
+        pattern: string,
+        config: ExtensionConfig,
+        top = true
+    ) {
+        if (top) {
+            this.patternExts.unshift({
+                pattern: pattern,
+                config: config,
+            })
+        } else {
+            this.patternExts.push({
+                pattern: pattern,
+                config: config,
+            })
+        }
     }
 
     public register(
@@ -89,10 +117,11 @@ export class ExtWorker {
         pattern: string,
         config: ExtensionConfig,
         extFactor: ExtensionFactor,
-        fsWorker: FsWorker
+        fsWorker: FsWorker,
+        top = true
     ) {
-        this.registerWithFactor(name, extFactor)
-        this.registerWithConfig(pattern, config)
+        this.registerWithFactor(name, extFactor, top)
+        this.registerWithConfig(pattern, config, top)
         this.cfg2ext.set(config, extFactor(config, fsWorker))
     }
 }

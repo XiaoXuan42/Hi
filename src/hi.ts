@@ -5,7 +5,6 @@ import { execSync } from "child_process"
 import { FsWorker } from "./fsWorker"
 import { Listener } from "./listen"
 import { Extension } from "./extension"
-import { HiMarkConfig, HiMarkFactor, HiMark } from "./extensions/HiMark/hiMark"
 
 export class Hi {
     readonly config: Config
@@ -16,17 +15,9 @@ export class Hi {
 
     constructor(config: Config) {
         this.config = config
-        this.extWorker = new ExtWorker(config)
         this.fsWorker = new FsWorker(config)
+        this.extWorker = new ExtWorker(config, this.fsWorker)
         this.listener = new Listener(config)
-
-        this.extWorker.register(
-            HiMark.extname,
-            "**/*.{md,html,jinja,pug}",
-            new HiMarkConfig(),
-            HiMarkFactor,
-            this.fsWorker
-        )
     }
 
     private async _writeFile(file: File, ext: Extension) {

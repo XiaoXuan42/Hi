@@ -14,9 +14,7 @@ export interface ExtensionConfig {
 }
 
 export interface Extension {
-    transform(
-        file: File,
-        config: ExtensionConfig,
-        fsWorker: FsWorker
-    ): Promise<ExtensionResult>
+    transform(file: File, fsWorker: FsWorker): Promise<ExtensionResult>
 }
+
+export type ExtensionFactor = (config: ExtensionConfig, fsWorker: FsWorker) => Extension

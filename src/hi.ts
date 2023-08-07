@@ -4,7 +4,8 @@ import { File } from "./file"
 import { execSync } from "child_process"
 import { FsWorker } from "./fsWorker"
 import { Listener } from "./listen"
-import { ExtensionConfig, Extension } from "./extension"
+import { Extension } from "./extension"
+import { HiMarkConfig, HiMarkFactor, HiMark } from "./extensions/HiMark/hiMark"
 
 export class Hi {
     readonly config: Config
@@ -18,18 +19,26 @@ export class Hi {
         this.extWorker = new ExtWorker(config)
         this.fsWorker = new FsWorker(config)
         this.listener = new Listener(config)
+
+        this.extWorker.register(
+            HiMark.extname,
+            "**/*.{md,html,jinja,pug}",
+            new HiMarkConfig(),
+            HiMarkFactor,
+            this.fsWorker
+        )
     }
 
-    private async _writeFile(
-        file: File,
-        ext: Extension,
-        extConfig: ExtensionConfig
-    ) {
-        const result = await ext.transform(file, extConfig, this.fsWorker)
+    private async _writeFile(file: File, ext: Extension) {
+        const result = await ext.transform(file, this.fsWorker)
         if (result.succ) {
             if (result.filename) {
+                const relpath = this.fsWorker.join(
+                    file.getDirname(),
+                    result.filename
+                )
                 await this.fsWorker
-                    .writeTarget(file.getRelPath(), result.content)
+                    .writeTarget(relpath, result.content)
                     .catch((reason) => {
                         console.log(
                             `Failed to write ${file.getRelPath()}: ${reason}`
@@ -47,9 +56,8 @@ export class Hi {
 
     private async generateFromPathRecurInit(p: string) {
         // p is relative path
-        return this.fsWorker
-            .lstatSrc(p)
-            .then(async (stat) => {
+        return this.fsWorker.lstatSrc(p).then(
+            async (stat) => {
                 if (stat.isDirectory()) {
                     await this.fsWorker.mkdirTarget(p)
                     const files = await this.fsWorker.readdirSrc(p)
@@ -61,12 +69,14 @@ export class Hi {
                     await Promise.all(promises)
                 } else {
                     const file = new File(p)
-                    const [ext, extConfig] = this.extWorker.getExtension(file)
-                    await this._writeFile(file, ext, extConfig)
+                    const ext = this.extWorker.getExtension(file, this.fsWorker)
+                    await this._writeFile(file, ext)
                 }
-            }, (reason) => {
+            },
+            (reason) => {
                 console.log(`Failed to lstat ${p}: ${reason}`)
-            })
+            }
+        )
     }
 
     public async generateInit() {

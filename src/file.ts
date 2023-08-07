@@ -1,3 +1,5 @@
+import * as path from "node:path"
+
 export class File {
     private relPath: string
 
@@ -7,5 +9,27 @@ export class File {
 
     public getRelPath(): string {
         return this.relPath
+    }
+
+    public getDirname(): string {
+        return path.dirname(this.relPath)
+    }
+
+    public getBasename(): string {
+        return path.basename(this.relPath)
+    }
+
+    public getFileAndExtName(): [string, string] {
+        const basename = path.basename(this.relPath)
+        const index = basename.lastIndexOf(".")
+        let filename: string, extname: string
+        if (index <= 0) {
+            filename = basename
+            extname = ""
+        } else {
+            filename = basename.substring(0, index)
+            extname = basename.substring(index + 1)
+        }
+        return [filename, extname]
     }
 }

@@ -73,6 +73,10 @@ export class FsWorker {
         return fs.promises.readFile(this.getAbsSrcPath(relpath))
     }
 
+    public readSrcSync(relpath: string) {
+        return fs.readFileSync(this.getAbsSrcPath(relpath))
+    }
+
     public async writeTarget(relpath: string, content: Buffer | string) {
         return fs.promises.writeFile(this.getAbsTargetPath(relpath), content)
     }

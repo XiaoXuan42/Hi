@@ -3,7 +3,7 @@ import { ExtensionConfig } from "./extension"
 import * as path from "node:path"
 
 type ExtItem = {
-    pattern: string
+    patterns: string[]
     config: ExtensionConfig
 }
 

@@ -52,7 +52,7 @@ class DefaultExtension implements Extension {
 
 export class ExtWorker {
     readonly config: Config
-    private patternExts: { pattern: string; config: ExtensionConfig }[]
+    private patternExts: { patterns: string[]; config: ExtensionConfig }[]
     private name2ext: { [name: string]: ExtensionFactor }
     private cfg2ext: Map<ExtensionConfig, Extension>
     private defaultExt: Extension
@@ -66,7 +66,7 @@ export class ExtWorker {
 
         this.register(
             HiMark.extname,
-            "**/*.{md,html,jinja,pug}",
+            ["**/*.{md,html,jinja,pug}"],
             new HiMarkConfig(),
             HiMarkFactor,
             fsWorker,
@@ -74,13 +74,18 @@ export class ExtWorker {
         )
     }
 
-    private match(p: string, pattern: string): boolean {
-        return minimatch(p, pattern)
+    private match(p: string, patterns: string[]): boolean {
+        for (let pattern of patterns) {
+            if (minimatch(p, pattern)) {
+                return true
+            }
+        }
+        return false
     }
 
     public getExtension(file: File, fsWorker: FsWorker): Extension {
         for (let extItem of this.patternExts) {
-            if (this.match(file.getRelPath(), extItem.pattern)) {
+            if (this.match(file.getRelPath(), extItem.patterns)) {
                 if (this.cfg2ext.has(extItem.config)) {
                     return this.cfg2ext.get(extItem.config)!
                 } else {
@@ -109,18 +114,18 @@ export class ExtWorker {
     }
 
     public registerWithConfig(
-        pattern: string,
+        patterns: string[],
         config: ExtensionConfig,
         top = true
     ) {
         if (top) {
             this.patternExts.unshift({
-                pattern: pattern,
+                patterns: patterns,
                 config: config,
             })
         } else {
             this.patternExts.push({
-                pattern: pattern,
+                patterns: patterns,
                 config: config,
             })
         }
@@ -128,14 +133,14 @@ export class ExtWorker {
 
     public register(
         name: string,
-        pattern: string,
+        patterns: string[],
         config: ExtensionConfig,
         extFactor: ExtensionFactor,
         fsWorker: FsWorker,
         top = true
     ) {
         this.registerWithFactor(name, extFactor, top)
-        this.registerWithConfig(pattern, config, top)
+        this.registerWithConfig(patterns, config, top)
         this.cfg2ext.set(config, extFactor(config, fsWorker))
     }
 }

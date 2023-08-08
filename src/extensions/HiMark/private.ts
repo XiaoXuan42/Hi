@@ -108,7 +108,7 @@ function keydown() {
 </script>
 </html>`
 
-export class PrivateBackendConfig {
+export class PrivateConfig {
     public templatePath?: string
     public keyName: string
     public passwd: string
@@ -121,10 +121,10 @@ export class PrivateBackendConfig {
     }
 }
 
-export class PrivateBackend {
+export class PrivateProcessor {
     private templateStr: string
 
-    constructor(config: PrivateBackendConfig, fsWorker: FsWorker) {
+    constructor(config: PrivateConfig, fsWorker: FsWorker) {
         if (config.templatePath) {
             this.templateStr = fsWorker
                 .readSrcSync(config.templatePath)

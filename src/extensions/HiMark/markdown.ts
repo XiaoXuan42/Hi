@@ -1,9 +1,8 @@
 import * as fm from "front-matter"
-import katex from "katex"
-import { marked } from "marked"
-import hljs from "highlight.js"
-import * as nunjucks from "nunjucks"
+import { NunjuckUtil, MarkDownUtil } from "./util"
 import { FsWorker } from "../../fsWorker"
+import { File } from "../../file"
+import { BackEnd } from "./backend"
 
 const katexCss = String.raw`<link rel="stylesheet" 
 href="https://cdn.jsdelivr.net/npm/katex@0.15.6/dist/katex.min.css"
@@ -26,12 +25,26 @@ export class MarkDownBackendConfig {
     public templatePath?: string
 }
 
-export class MarkDownBackend {
+class MarkDownData {
+    constructor(
+        public html: string,
+        public stylesheet: string,
+        public relUrl: string,
+        public frontMatter: any,
+        public file: File,
+        public fs: FsWorker
+    ) {}
+}
+
+export class MarkDownBackend implements BackEnd {
     private config: MarkDownBackendConfig
+    private fsWorker: FsWorker
     private templateStr: string
+    private templateCompiled
 
     constructor(config: MarkDownBackendConfig, fsWorker: FsWorker) {
         this.config = config
+        this.fsWorker = fsWorker
         if (config.templatePath) {
             this.templateStr = fsWorker
                 .readSrcSync(config.templatePath)
@@ -39,86 +52,40 @@ export class MarkDownBackend {
         } else {
             this.templateStr = defaultMarkdownTemplate
         }
+        this.templateCompiled = NunjuckUtil.compile(this.templateStr)
     }
 
-    // see https://github.com/markedjs/marked/issues/1538
-    public static renderMarkdown(mkdown: string): string {
-        marked.setOptions({
-            highlight: function (code: string, lang: string) {
-                const language = hljs.getLanguage(lang) ? lang : "plaintext"
-                return hljs.highlight(code, { language }).value
-            },
-            langPrefix: "hljs language-",
-        })
-        let oldRenderer = new marked.Renderer()
-        let newRenderer = new marked.Renderer()
-
-        let cnt = 0
-        let math_expressions: {
-            [key: string]: { type: "block" | "inline"; expression: string }
-        } = {}
-        const next_id = () => `__special_katex_id__${cnt++}`
-        const replace_with_math_ids = (text: string) => {
-            text = text.replace(/\$\$([\S\s]+?)\$\$/g, (_match, expression) => {
-                let cur_id = next_id()
-                math_expressions[cur_id] = { type: "block", expression }
-                return cur_id
-            })
-            text = text.replace(/\$([\S\s]+?)\$/g, (_match, expression) => {
-                let cur_id = next_id()
-                math_expressions[cur_id] = { type: "inline", expression }
-                return cur_id
-            })
-            return text
-        }
-
-        newRenderer.listitem = (
-            text: string,
-            task: boolean,
-            checked: boolean
-        ) => {
-            return oldRenderer.listitem(
-                replace_with_math_ids(text),
-                task,
-                checked
-            )
-        }
-        newRenderer.paragraph = (text: string) => {
-            return oldRenderer.paragraph(replace_with_math_ids(text))
-        }
-        newRenderer.tablecell = (content: string, flags) => {
-            return oldRenderer.tablecell(replace_with_math_ids(content), flags)
-        }
-        newRenderer.text = (text: string) => {
-            return oldRenderer.text(replace_with_math_ids(text))
-        }
-        let render_result = marked(mkdown, { renderer: newRenderer })
-        render_result = render_result.replace(
-            /(__special_katex_id__\d)/g,
-            (_match, capture) => {
-                const { type, expression } = math_expressions[capture]
-                return katex.renderToString(expression, {
-                    displayMode: type === "block",
-                })
-            }
+    private configureFromContent(file: File) {
+        let [fname, _] = file.getFileAndExtName()
+        const relUrl = this.fsWorker.join(file.getDirname(), fname + ".html")
+        const mkdown: MarkDownData = new MarkDownData(
+            "",
+            "",
+            relUrl,
+            {},
+            file,
+            this.fsWorker
         )
-        return render_result
-    }
-
-    private configureFromContent(content: string) {
-        const mkdown: any = {}
-        const fmRes = fm.default(content)
+        const fmRes = fm.default(file.content as string)
         const frontMatter = fmRes.attributes
-        mkdown.html = `<div class="markdown">${MarkDownBackend.renderMarkdown(
+        mkdown.html = `<div class="markdown">${MarkDownUtil.renderMarkdown(
             fmRes.body
         )}</div>`
         mkdown.stylesheet = mkStyleSheet
         mkdown.frontMatter = frontMatter
-        return { markdown: mkdown }
+
+        if ("date" in mkdown.frontMatter) {
+            mkdown.frontMatter.date = new Date(mkdown.frontMatter.date)
+        }
+        return mkdown
     }
 
-    public transform(content: string) {
-        const context = this.configureFromContent(content)
-        return nunjucks.renderString(this.templateStr, context)
+    public prepareData(file: File) {
+        return this.configureFromContent(file)
+    }
+
+    public transform(file: File) {
+        const data = file.data as MarkDownData
+        return this.templateCompiled.render({ markdown: data })
     }
 }

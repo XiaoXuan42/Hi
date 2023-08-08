@@ -11,6 +11,7 @@
   "license": "MIT",
   "devDependencies": {
     "@types/crypto-js": "^4.1.1",
+    "@types/glob": "^8.1.0",
     "@types/katex": "^0.14.0",
     "@types/marked": "^4.0.2",
     "@types/node": "^17.0.15",
@@ -27,6 +28,7 @@
     "commander": "^5.1.0",
     "crypto-js": "^4.1.1",
     "front-matter": "^4.0.2",
+    "glob": "^10.3.3",
     "highlight.js": "^11.5.1",
     "katex": "^0.15.6",
     "marked": "^4.0.12",

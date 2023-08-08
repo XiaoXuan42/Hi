@@ -1,6 +1,6 @@
 import { Config } from "./config"
 import { ExtWorker } from "./extWorker"
-import { File } from "./file"
+import { File, DirEntry } from "./file"
 import { execSync } from "child_process"
 import { FsWorker } from "./fsWorker"
 import { Listener } from "./listen"
@@ -48,37 +48,40 @@ export class Hi {
         }
     }
 
-    private async initAssignRecur(p: string) {
-        // p is relative path
-        return this.fsWorker.lstatSrc(p).then(
-            async (stat) => {
-                if (stat.isDirectory()) {
-                    await this.fsWorker.mkdirTarget(p)
-                    const files = await this.fsWorker.readdirSrc(p)
-                    const promises = []
-                    for (let file of files) {
-                        const relpath = this.fsWorker.join(p, file)
-                        promises.push(this.initAssignRecur(relpath))
+    private async initAssignRecur(direntry: DirEntry, childrens: string[]) {
+        const promises: Promise<void>[] = []
+        childrens.forEach((child) => {
+            const nextRelPath = this.fsWorker.join(direntry.getRelPath(), child)
+            promises.push(
+                this.fsWorker.lstatSrc(nextRelPath).then(
+                    async (stat) => {
+                        if (stat.isDirectory()) {
+                            await this.fsWorker.mkdirTarget(nextRelPath)
+                            const files = await this.fsWorker.readdirSrc(
+                                nextRelPath
+                            )
+                            const newDirEntry = direntry.getOrAddSubDir(child)
+                            await this.initAssignRecur(newDirEntry, files)
+                        } else {
+                            const newFile = direntry.getOrAddFile(child)
+                            const ext = this.extWorker.getExtension(
+                                newFile,
+                                this.fsWorker
+                            )
+                            this.assign(ext, newFile)
+                        }
+                    },
+                    (reason) => {
+                        console.log(`Failed to lstat ${nextRelPath}: ${reason}`)
                     }
-                    await Promise.all(promises)
-                } else {
-                    const file = new File(p)
-                    const ext = this.extWorker.getExtension(file, this.fsWorker)
-                    this.assign(ext, file)
-                }
-            },
-            (reason) => {
-                console.log(`Failed to lstat ${p}: ${reason}`)
-            }
-        )
+                )
+            )
+        })
+        return Promise.all(promises)
     }
 
     private async initAssign() {
-        const promises: Promise<void>[] = []
-        this.config.includes.forEach((dir) => {
-            promises.push(this.initAssignRecur(dir))
-        })
-        return Promise.all(promises)
+        return this.initAssignRecur(this.fsWorker.root, this.config.includes)
     }
 
     private async initMap() {

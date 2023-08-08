@@ -1,9 +1,18 @@
-import { MarkDownBackend } from "./markdown"
+import { BackEnd } from "./backend"
 
-import * as nunjucks from "nunjucks"
+import { File } from "../../file"
+import { MarkDownUtil, NunjuckUtil } from "./util"
+import { FsWorker } from "../../fsWorker"
 
-export class JinjaBackend {
+class JinjaData {
     constructor() {}
+}
+
+export class JinjaBackend implements BackEnd {
+    private fsWorker: FsWorker
+    constructor(fsWorker: FsWorker) {
+        this.fsWorker = fsWorker
+    }
 
     // convert <markdown>...</markdown> to html
     static convertMkTag(oldContent: string): string {
@@ -39,7 +48,7 @@ export class JinjaBackend {
                     /}}/g,
                     "{% raw %} }} {% endraw %}"
                 )
-                const curMk = MarkDownBackend.renderMarkdown(tagContent)
+                const curMk = MarkDownUtil.renderMarkdown(tagContent)
                 result += `<div class="markdown">${curMk}</div>`
                 lastIndex = match.index + matchContent.length
             }
@@ -48,9 +57,13 @@ export class JinjaBackend {
         return result
     }
 
-    public transform(content: string) {
-        let newContent = JinjaBackend.convertMkTag(content)
-        let context: any = {}
-        return nunjucks.renderString(newContent, context)
+    public prepareData(file: File) {
+        return new JinjaData()
+    }
+
+    public transform(file: File) {
+        let newContent = JinjaBackend.convertMkTag(file.content as string)
+        let context: any = { fs: this.fsWorker }
+        return NunjuckUtil.renderString(newContent, context)
     }
 }

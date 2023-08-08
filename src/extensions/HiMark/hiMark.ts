@@ -4,19 +4,20 @@ import {
     ExtensionFactor,
     ExtensionResult,
 } from "../../extension"
-import { Buffer } from "node:buffer"
 import { FsWorker } from "../../fsWorker"
 import { File } from "../../file"
 import { MarkDownBackend, MarkDownBackendConfig } from "./markdown"
 import { PugBackend } from "./pug"
 import { JinjaBackend } from "./jinja"
-import { PrivateBackend, PrivateBackendConfig } from "./private"
+import { HtmlBackend } from "./html"
+import { PrivateProcessor, PrivateConfig } from "./private"
+import { BackEnd } from "./backend"
 import { minimatch } from "minimatch"
 
 export class HiMarkConfig implements ExtensionConfig {
     public extname: string
     public markdown?: MarkDownBackendConfig
-    public private?: PrivateBackendConfig
+    public private?: PrivateConfig
 
     constructor() {
         this.extname = HiMark.extname
@@ -25,10 +26,11 @@ export class HiMarkConfig implements ExtensionConfig {
 
 export class HiMark implements Extension {
     private config: HiMarkConfig
+    private htmlBackend: HtmlBackend
     private mkBackend: MarkDownBackend
     private jinjaBackend: JinjaBackend
     private pugBackend: PugBackend
-    private privateBackend: PrivateBackend
+    private privateBackend: PrivateProcessor
     private fsWorker: FsWorker
 
     public static readonly extname = "Hi:HiMark"
@@ -38,6 +40,7 @@ export class HiMark implements Extension {
         let hiConfig = config as HiMarkConfig
         this.config = hiConfig
 
+        this.htmlBackend = new HtmlBackend()
         if (hiConfig.markdown?.templatePath) {
             this.mkBackend = new MarkDownBackend(hiConfig.markdown, fsWorker)
         } else {
@@ -46,16 +49,34 @@ export class HiMark implements Extension {
                 fsWorker
             )
         }
-        this.jinjaBackend = new JinjaBackend()
+        this.jinjaBackend = new JinjaBackend(this.fsWorker)
         this.pugBackend = new PugBackend()
 
         if (hiConfig.private?.templatePath) {
-            this.privateBackend = new PrivateBackend(hiConfig.private, fsWorker)
-        } else {
-            this.privateBackend = new PrivateBackend(
-                new PrivateBackendConfig("Hi:HiMark", "Hi:HiMark:Passwd", []),
+            this.privateBackend = new PrivateProcessor(
+                hiConfig.private,
                 fsWorker
             )
+        } else {
+            this.privateBackend = new PrivateProcessor(
+                new PrivateConfig("Hi:HiMark", "Hi:HiMark:Passwd", []),
+                fsWorker
+            )
+        }
+    }
+
+    private getBackEnd(file: File): BackEnd {
+        let [_, extname] = file.getFileAndExtName()
+        if (extname === "html") {
+            return this.htmlBackend
+        } else if (extname === "md") {
+            return this.mkBackend
+        } else if (extname === "jinja") {
+            return this.jinjaBackend
+        } else if (extname === "pug") {
+            return this.pugBackend
+        } else {
+            throw `Wrong assignment for HiMark: ${file.getRelPath()}`
         }
     }
 
@@ -64,7 +85,8 @@ export class HiMark implements Extension {
             .readSrc(file.getRelPath())
             .then((buffer) => {
                 file.content = buffer.toString("utf-8")
-                file.data = true
+                const backend = this.getBackEnd(file)
+                file.data = backend.prepareData(file)
             })
             .catch((_) => {
                 file.data = undefined
@@ -72,15 +94,10 @@ export class HiMark implements Extension {
     }
 
     public async reduce(file: File): Promise<ExtensionResult[]> {
-        let [fname, extname] = file.getFileAndExtName()
+        let [fname, _] = file.getFileAndExtName()
         const filename = fname + ".html"
         const targetRelPath = this.fsWorker.join(file.getDirname(), filename)
-        let content: string
-        if (file.content instanceof Buffer) {
-            content = file.content.toString("utf-8")
-        } else {
-            content = file.content
-        }
+        const content: string = file.content as string
 
         let result: ExtensionResult = {
             file: file,
@@ -91,6 +108,9 @@ export class HiMark implements Extension {
             errMsg: "",
         }
 
+        const backend = this.getBackEnd(file)
+        result.content = backend.transform(file)
+
         let isPrivate = false
         if (this.config.private) {
             for (let privatePattern of this.config.private.files) {
@@ -100,17 +120,6 @@ export class HiMark implements Extension {
                 }
             }
         }
-
-        if (extname === "md") {
-            result.content = this.mkBackend.transform(content)
-        } else if (extname === "jinja") {
-            result.content = this.jinjaBackend.transform(content)
-        } else if (extname === "pug") {
-            result.content = this.pugBackend.transform(content)
-        } else if (extname !== "html") {
-            throw `Wrong assignment for HiMark: ${file.getRelPath()}`
-        }
-
         if (isPrivate && this.config.private) {
             result.content = this.privateBackend.transform(
                 this.config.private.keyName,

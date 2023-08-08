@@ -1,41 +1,9 @@
 import { Config } from "./config"
+import { DirEntry, INode, File } from "./file"
 import { Buffer } from "node:buffer"
+import { globSync } from "glob"
 import * as fs from "node:fs"
 import * as path from "node:path"
-
-class DirEntry {
-    private name: string
-    private parent: DirEntry | undefined
-    private childrens: { [name: string]: DirEntry }
-    private relpath: string
-
-    constructor(parent: DirEntry | undefined, name: string) {
-        this.name = name
-        this.parent = parent
-        this.childrens = {}
-        this.relpath = name
-        if (this.parent !== undefined && this.parent.relpath !== "") {
-            this.relpath = path.join(this.parent.relpath, this.name)
-        }
-    }
-
-    public getOrAddChildren(dirname: string) {
-        if (dirname in this.childrens) {
-            return this.childrens[dirname]
-        }
-        let children = new DirEntry(this, dirname)
-        this.childrens[dirname] = children
-        return children
-    }
-
-    public getRelPath(): string {
-        return this.relpath
-    }
-
-    public hasChildren(dirname: string) {
-        return dirname in this.childrens
-    }
-}
 
 export class FsWorker {
     private config: Config
@@ -88,8 +56,8 @@ export class FsWorker {
         })
         let curdir = this.root
         for (let name of dirnames) {
-            if (!curdir.hasChildren(name)) {
-                const newdir = curdir.getOrAddChildren(name)
+            if (!curdir.hasSubDir(name)) {
+                const newdir = curdir.getOrAddSubDir(name)
                 const newdirTargetPath = this.getAbsTargetPath(
                     newdir.getRelPath()
                 )
@@ -97,11 +65,53 @@ export class FsWorker {
                     fs.mkdirSync(newdirTargetPath)
                 }
             }
-            curdir = curdir.getOrAddChildren(name)
+            curdir = curdir.getOrAddSubDir(name)
         }
     }
 
     public async mkdirTarget(relpath: string) {
         return this.ensureDirTarget(relpath)
+    }
+
+    public mkdirTargetSync(relpath: string) {
+        return this.ensureDirTarget(relpath)
+    }
+
+    public visitByPath(p: string): INode | undefined {
+        if (path.isAbsolute(p)) {
+            p = path.relative(this.config.projectRootDir, p)
+        }
+        if (p.startsWith(".")) {
+            // only visit nodes inside the project
+            return undefined
+        }
+        // assume p is a relpath
+        let names = p.split(path.sep)
+        names = names.filter(name => { return name !== "" })
+        let curNode: INode | undefined = this.root
+        for (let name of names) {
+            if (!curNode || curNode.isFile()) {
+                return undefined
+            }
+            curNode = (curNode as DirEntry).getChild(name)
+        }
+        return curNode
+    }
+
+    public glob(patterns: string[]): File[] {
+        const addedFile= new Set<File>()
+        const addedPath = new Set<string>()
+        patterns.forEach(pattern => {
+            pattern = path.join(this.config.projectRootDir, pattern)
+            const results = globSync(pattern)
+            results.forEach(result => { addedPath.add(result) })
+        })
+        addedPath.forEach(p => {
+            const inode = this.visitByPath(p)
+            if (inode && inode.isFile()) {
+                addedFile.add((inode as File))
+            }
+        })
+        return Array.from(addedFile)
     }
 }

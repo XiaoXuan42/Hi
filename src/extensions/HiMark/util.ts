@@ -38,22 +38,18 @@ type MKRenderResult = {
 }
 
 export class MarkDownUtil {
-    static headListSupport(
-        renderer: marked.Renderer,
-        oldRenderer: marked.Renderer,
-        toc: MKHeadItem[]
-    ) {
+    static headListSupport(renderer: marked.Renderer, toc: MKHeadItem[]) {
         renderer.heading = function (this: any, text, level, raw, slugger) {
             // https://github.com/markedjs/marked/issues/545
-            let anchor =
-                this.options.headerPrefix +
-                raw.toLowerCase().replace(/[^\w\\u4e00-\\u9fa5]]+/g, "-")
+            // https://github.com/markedjs/marked/blob/f65264d6b4a831dd8e25a41012e3c7dc4866ea7a/src/Renderer.ts#L51
+            // NOTE: keep this.options.headerIds true
+            const anchor = this.options.headerPrefix + slugger.slug(raw)
             toc.push({
                 anchor: anchor,
                 level: level,
                 text: text,
             })
-            return oldRenderer.heading(text, level, raw, slugger)
+            return `<h${level} id="${anchor}">${text}</h${level}>\n`
         }
     }
 
@@ -110,7 +106,7 @@ export class MarkDownUtil {
         }
 
         let headList: MKHeadItem[] = []
-        this.headListSupport(newRenderer, oldRenderer, headList)
+        this.headListSupport(newRenderer, headList)
 
         let render_result = marked(mkdown, { renderer: newRenderer })
         render_result = render_result.replace(

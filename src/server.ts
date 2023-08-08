@@ -6,18 +6,18 @@ import { FsWorker } from "./fsWorker"
 export class Server {
     private config: Config
     private fsWorker: FsWorker
-    server: http.Server | undefined
+    private server: http.Server | undefined
 
     constructor(config: Config, fsWorker: FsWorker) {
         this.config = config
         this.fsWorker = fsWorker
     }
 
-    public start(port = 8080) {
+    public start(port: number) {
         this.server = http.createServer((req, res) => {
             if (req.url) {
                 req.url = decodeURI(req.url)
-                this.fsWorker.readSrc(req.url).then((content) => {
+                this.fsWorker.readTarget(req.url).then((content) => {
                     res.writeHead(200)
                     res.end(content)
                 }).catch((reason) => {

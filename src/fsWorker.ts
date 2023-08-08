@@ -45,6 +45,10 @@ export class FsWorker {
         return fs.readFileSync(this.getAbsSrcPath(relpath))
     }
 
+    public async readTarget(relpath: string) {
+        return fs.promises.readFile(this.getAbsTargetPath(relpath))
+    }
+
     public async writeTarget(relpath: string, content: Buffer | string) {
         return fs.promises.writeFile(this.getAbsTargetPath(relpath), content)
     }
@@ -87,7 +91,9 @@ export class FsWorker {
         }
         // assume p is a relpath
         let names = p.split(path.sep)
-        names = names.filter(name => { return name !== "" })
+        names = names.filter((name) => {
+            return name !== ""
+        })
         let curNode: INode | undefined = this.root
         for (let name of names) {
             if (!curNode || curNode.isFile()) {
@@ -99,17 +105,19 @@ export class FsWorker {
     }
 
     public glob(patterns: string[]): File[] {
-        const addedFile= new Set<File>()
+        const addedFile = new Set<File>()
         const addedPath = new Set<string>()
-        patterns.forEach(pattern => {
+        patterns.forEach((pattern) => {
             pattern = path.join(this.config.projectRootDir, pattern)
             const results = globSync(pattern)
-            results.forEach(result => { addedPath.add(result) })
+            results.forEach((result) => {
+                addedPath.add(result)
+            })
         })
-        addedPath.forEach(p => {
+        addedPath.forEach((p) => {
             const inode = this.visitByPath(p)
             if (inode && inode.isFile()) {
-                addedFile.add((inode as File))
+                addedFile.add(inode as File)
             }
         })
         return Array.from(addedFile)

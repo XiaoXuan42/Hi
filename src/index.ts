@@ -20,18 +20,19 @@ if (opts.config) {
 }
 let config = new Config(opts.path, config_path)
 let hi = new Hi(config)
-hi.initGenerate()
-if (opts.git_commit) {
-    let date = new Date()
-    let message = `"${date.toUTCString()}"`
-    if (opts.git_message) {
-        message = opts.git_message
+hi.initGenerate().then(_ => {
+    if (opts.git_commit) {
+        let date = new Date()
+        let message = `"${date.toUTCString()}"`
+        if (opts.git_message) {
+            message = opts.git_message
+        }
+        let output = hi.gitCommit(message)
+        if (output) {
+            console.log(output)
+        }
     }
-    let output = hi.gitCommit(message)
-    if (output) {
-        console.log(output)
+    if (opts.live) {
+        hi.live()
     }
-}
-if (opts.live) {
-    hi.live()
-}
+})

@@ -5,6 +5,7 @@ import { execSync } from "child_process"
 import { FsWorker } from "./fsWorker"
 import { Listener } from "./listen"
 import { Extension, ExtensionResult } from "./extension"
+import { Server } from "./server"
 
 export class Hi {
     readonly config: Config
@@ -12,6 +13,7 @@ export class Hi {
     private listener: Listener
     private listenIntervalId: number | undefined
     private assignment: Map<Extension, File[]>
+    private server: Server
     public extWorker: ExtWorker
 
     constructor(config: Config) {
@@ -20,6 +22,7 @@ export class Hi {
         this.extWorker = new ExtWorker(config, this.fsWorker)
         this.listener = new Listener(config)
         this.assignment = new Map()
+        this.server = new Server(this.config, this.fsWorker)
     }
 
     private async executeResult(result: ExtensionResult) {
@@ -148,5 +151,7 @@ export class Hi {
         }
     }
 
-    public async live() {}
+    public async live(port=8080) {
+        this.server.start(port)
+    }
 }

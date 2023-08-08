@@ -1,3 +1,4 @@
+import { assert } from "console"
 import { Config } from "./config"
 import * as chokidar from "chokidar"
 
@@ -14,8 +15,8 @@ export class Listener {
     }
 
     public clearAll() {
-        this.changeSet.clear()
-        this.removeSet.clear()
+        this.changeSet = new Set()
+        this.removeSet = new Set()
     }
 
     public async listenInit() {
@@ -29,12 +30,19 @@ export class Listener {
             })
             .on("change", (path, stat) => {
                 this.changeSet.add(path)
+                assert(!this.removeSet.has(path))
             })
             .on("add", (path) => {
                 this.changeSet.add(path)
+                if (this.removeSet.has(path)) {
+                    this.removeSet.delete(path)
+                }
             })
             .on("unlink", (path) => {
                 this.removeSet.add(path)
+                if (this.changeSet.has(path)) {
+                    this.changeSet.delete(path)
+                }
             })
     }
 

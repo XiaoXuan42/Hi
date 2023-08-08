@@ -4,6 +4,7 @@ import { Buffer } from "node:buffer"
 import { globSync } from "glob"
 import * as fs from "node:fs"
 import * as path from "node:path"
+import { minimatch } from "minimatch"
 
 export class FsWorker {
     private config: Config
@@ -19,6 +20,15 @@ export class FsWorker {
 
     public join(...paths: string[]) {
         return path.join(...paths)
+    }
+
+    public globMatch(p: string, patterns: string[]): boolean {
+        for (const pattern of patterns) {
+            if (minimatch(p, pattern)) {
+                return true
+            }
+        }
+        return false
     }
 
     public getAbsSrcPath(relpath: string) {
@@ -81,27 +91,51 @@ export class FsWorker {
         return this.ensureDirTarget(relpath)
     }
 
-    public visitByPath(p: string): INode | undefined {
+    public rmTargetSync(relpath: string, options?: fs.RmOptions) {
+        return fs.rmSync(relpath, options)
+    }
+
+    public toRelative(p: string) {
         if (path.isAbsolute(p)) {
             p = path.relative(this.config.projectRootDir, p)
         }
+        return p
+    }
+
+    // whether we care about this directory/file, p is a relative path
+    public isInteresting(p: string) {
         if (p.startsWith(".")) {
-            // only visit nodes inside the project
-            return undefined
+            return false
+        }
+        // FIXME: check whether inside config.includes
+        return true
+    }
+
+    private _visitByPath(p: string): [DirEntry?, INode?] {
+        p = this.toRelative(p)
+        if (!this.isInteresting(p)) {
+            return [undefined, undefined]
         }
         // assume p is a relpath
         let names = p.split(path.sep)
         names = names.filter((name) => {
             return name !== ""
         })
+        let parentNode: DirEntry = this.root
         let curNode: INode | undefined = this.root
         for (let name of names) {
             if (!curNode || curNode.isFile()) {
-                return undefined
+                return [undefined, undefined]
             }
+            parentNode = curNode as DirEntry
             curNode = (curNode as DirEntry).getChild(name)
         }
-        return curNode
+        return [parentNode, curNode]
+    }
+
+    public visitByPath(p: string): INode | undefined {
+        const [_, cur] = this._visitByPath(p)
+        return cur
     }
 
     public glob(patterns: string[]): File[] {
@@ -121,5 +155,17 @@ export class FsWorker {
             }
         })
         return Array.from(addedFile)
+    }
+
+    public remove(p: string) {
+        const [parentDir, curNode] = this._visitByPath(p)
+        if (curNode === undefined || parentDir === undefined) {
+            return
+        }
+        parentDir.remove(curNode.getName())
+        this.rmTargetSync((curNode as File).getRelPath(), {
+            force: true,
+            recursive: true,
+        })
     }
 }

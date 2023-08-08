@@ -3,6 +3,7 @@ import { Buffer } from "node:buffer"
 import { assert } from "node:console"
 
 export interface INode {
+    getName(): string
     isFile(): boolean
     getRelPath(): string
 }
@@ -16,6 +17,10 @@ export class File implements INode {
         this.relPath = relPath
         this.content = ""
         this.data = undefined
+    }
+
+    public getName() {
+        return this.getBasename()
     }
 
     public isFile() {
@@ -68,6 +73,10 @@ export class DirEntry implements INode {
             this.relpath = path.join(this.parent.relpath, this.name)
         }
         this.files = {}
+    }
+
+    public getName() {
+        return this.name
     }
 
     public isFile() {
@@ -125,6 +134,18 @@ export class DirEntry implements INode {
     public getChild(name: string): INode | undefined {
         if (name in this.childrens) {
             return this.childrens[name]
+        }
+    }
+
+    public remove(name: string) {
+        if (name in this.childrens) {
+            delete this.childrens[name]
+        }
+        if (name in this.subdirs) {
+            delete this.subdirs[name]
+        }
+        if (name in this.files) {
+            delete this.files[name]
         }
     }
 }

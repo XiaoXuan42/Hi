@@ -5,7 +5,6 @@ import {
     ExtensionFactor,
     ExtensionResult,
 } from "./extension"
-import { minimatch } from "minimatch"
 import { File } from "./file"
 import { FsWorker } from "./fsWorker"
 import { HiMarkConfig, HiMarkFactor, HiMark } from "./extensions/HiMark/hiMark"
@@ -74,18 +73,9 @@ export class ExtWorker {
         )
     }
 
-    private match(p: string, patterns: string[]): boolean {
-        for (let pattern of patterns) {
-            if (minimatch(p, pattern)) {
-                return true
-            }
-        }
-        return false
-    }
-
     public getExtension(file: File, fsWorker: FsWorker): Extension {
         for (let extItem of this.patternExts) {
-            if (this.match(file.getRelPath(), extItem.patterns)) {
+            if (fsWorker.globMatch(file.getRelPath(), extItem.patterns)) {
                 if (this.cfg2ext.has(extItem.config)) {
                     return this.cfg2ext.get(extItem.config)!
                 } else {

@@ -12,7 +12,6 @@ import { JinjaBackend } from "./jinja"
 import { HtmlBackend } from "./html"
 import { PrivateProcessor, PrivateConfig } from "./private"
 import { BackEnd } from "./backend"
-import { minimatch } from "minimatch"
 
 export class HiMarkConfig implements ExtensionConfig {
     public extname: string
@@ -113,12 +112,10 @@ export class HiMark implements Extension {
 
         let isPrivate = false
         if (this.config.private) {
-            for (let privatePattern of this.config.private.files) {
-                if (minimatch(file.getRelPath(), privatePattern)) {
-                    isPrivate = true
-                    break
-                }
-            }
+            isPrivate = this.fsWorker.globMatch(
+                file.getRelPath(),
+                this.config.private.files
+            )
         }
         if (isPrivate && this.config.private) {
             result.content = this.privateBackend.transform(

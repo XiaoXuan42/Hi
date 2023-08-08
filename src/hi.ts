@@ -11,7 +11,7 @@ export class Hi {
     readonly config: Config
     private fsWorker: FsWorker
     private listener: Listener
-    private listenIntervalId: number | undefined
+    private isListening: boolean
     private assignment: Map<Extension, File[]>
     private server: Server
     public extWorker: ExtWorker
@@ -23,6 +23,7 @@ export class Hi {
         this.listener = new Listener(config)
         this.assignment = new Map()
         this.server = new Server(this.config, this.fsWorker)
+        this.isListening = false
     }
 
     private async executeResult(result: ExtensionResult) {
@@ -43,7 +44,8 @@ export class Hi {
         }
     }
 
-    private assign(ext: Extension, file: File) {
+    private assign(file: File) {
+        const ext = this.extWorker.getExtension(file, this.fsWorker)
         if (this.assignment.has(ext)) {
             this.assignment.get(ext)!.push(file)
         } else {
@@ -67,11 +69,7 @@ export class Hi {
                             await this.initAssignRecur(newDirEntry, files)
                         } else {
                             const newFile = direntry.getOrAddFile(child)
-                            const ext = this.extWorker.getExtension(
-                                newFile,
-                                this.fsWorker
-                            )
-                            this.assign(ext, newFile)
+                            this.assign(newFile)
                         }
                     },
                     (reason) => {
@@ -87,7 +85,7 @@ export class Hi {
         return this.initAssignRecur(this.fsWorker.root, this.config.includes)
     }
 
-    private async initMap() {
+    private async mapPhase() {
         const promises: Promise<void>[] = []
         this.assignment.forEach((files, ext) => {
             files.forEach((file) => {
@@ -97,7 +95,7 @@ export class Hi {
         return Promise.all(promises)
     }
 
-    private async initReduce() {
+    private async reducePhase() {
         const promises: Promise<void>[] = []
         this.assignment.forEach((files, ext) => {
             files.forEach((file) => {
@@ -118,8 +116,8 @@ export class Hi {
     public async initGenerate() {
         this.assignment.clear()
         await this.initAssign()
-        await this.initMap()
-        await this.initReduce()
+        await this.mapPhase()
+        await this.reducePhase()
         this.assignment.clear()
     }
 
@@ -133,25 +131,62 @@ export class Hi {
         return `${git_out.toString()}\n${push_out.toString()}`
     }
 
-    public async listen() {
-        // TODO
-        return this.listener
-            .listenInit()
-            .then((_) => {
-                return undefined
-            })
-            .catch((_) => {
-                console.log("Failed to listen")
-            })
+    private async _listen() {
+        this.assignment.clear()
+        let [changeSet, removeSet] = this.listener.getModification()
+        removeSet.forEach((val) => {
+            this.fsWorker.remove(val)
+        })
+        changeSet.forEach((val) => {
+            const inode = this.fsWorker.visitByPath(val)
+            if (inode && inode.isFile()) {
+                this.assign(inode as File)
+            }
+        })
+        await this.mapPhase()
+        await this.reducePhase()
+        this.assignment.clear()
     }
 
-    public unlisten() {
-        if (this.listenIntervalId) {
-            clearInterval(this.listenIntervalId)
+    private _listen_entry() {
+        if (this.isListening) {
+            this._listen().then((_) => {
+                if (this.isListening) {
+                    setTimeout(this._listen_entry.bind(this), 100)
+                }
+            })
         }
     }
 
-    public async live(port=8080) {
-        this.server.start(port)
+    private unlisten() {
+        this.isListening = false
+    }
+
+    private async listen() {
+        if (this.isListening) {
+            return
+        }
+        this.isListening = true
+        return this.listener
+            .listenInit()
+            .then((_) => {
+                setTimeout(this._listen_entry.bind(this), 100)
+                return true
+            })
+            .catch((_) => {
+                console.log("Failed to listen")
+                return false
+            })
+    }
+
+    public async live(port = 8080) {
+        this.listen().then((succ) => {
+            if (succ) {
+                this.server.start(port)
+                return true
+            } else {
+                return false
+            }
+        })
     }
 }

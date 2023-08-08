@@ -33,12 +33,12 @@ export class FsWorker {
 
     public getAbsSrcPath(relpath: string) {
         let p = path.join(this.config.projectRootDir, relpath)
+        // support symbolic link
         return fs.realpathSync(p)
     }
 
     public getAbsTargetPath(relpath: string) {
-        let p = path.join(this.config.outputDir, relpath)
-        return fs.realpathSync(p)
+        return path.join(this.config.outputDir, relpath)
     }
 
     public async statSrc(relpath: string) {

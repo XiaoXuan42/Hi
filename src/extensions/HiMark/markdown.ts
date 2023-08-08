@@ -1,5 +1,5 @@
 import * as fm from "front-matter"
-import { NunjuckUtil, MarkDownUtil } from "./util"
+import { NunjuckUtil, MarkDownUtil, MKHeadItem } from "./util"
 import { FsWorker } from "../../fsWorker"
 import { File } from "../../file"
 import { BackEnd } from "./backend"
@@ -31,6 +31,7 @@ class MarkDownData {
         public stylesheet: string,
         public relUrl: string,
         public frontMatter: any,
+        public headList: MKHeadItem[],
         public file: File,
         public fs: FsWorker
     ) {}
@@ -63,16 +64,17 @@ export class MarkDownBackend implements BackEnd {
             "",
             relUrl,
             {},
+            [],
             file,
             this.fsWorker
         )
         const fmRes = fm.default(file.content as string)
         const frontMatter = fmRes.attributes
-        mkdown.html = `<div class="markdown">${MarkDownUtil.renderMarkdown(
-            fmRes.body
-        )}</div>`
+        const renderRes = MarkDownUtil.renderMarkdown(fmRes.body)
+        mkdown.html = `<div class="markdown">${renderRes.result}</div>`
         mkdown.stylesheet = mkStyleSheet
         mkdown.frontMatter = frontMatter
+        mkdown.headList = renderRes.headList
 
         if ("date" in mkdown.frontMatter) {
             mkdown.frontMatter.date = new Date(mkdown.frontMatter.date)

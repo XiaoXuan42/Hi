@@ -5,7 +5,6 @@ import hljs from "highlight.js"
 
 export class NunjuckUtil {
     private static env: nunjucks.Environment
-    env = new nunjucks.Environment()
 
     static staticInit() {
         this.env = new nunjucks.Environment()
@@ -27,9 +26,39 @@ export class NunjuckUtil {
 }
 NunjuckUtil.staticInit()
 
+export type MKHeadItem = {
+    anchor: string
+    level: number
+    text: string
+}
+
+type MKRenderResult = {
+    result: string
+    headList: MKHeadItem[]
+}
+
 export class MarkDownUtil {
+    static headListSupport(
+        renderer: marked.Renderer,
+        oldRenderer: marked.Renderer,
+        toc: MKHeadItem[]
+    ) {
+        renderer.heading = function (this: any, text, level, raw, slugger) {
+            // https://github.com/markedjs/marked/issues/545
+            let anchor =
+                this.options.headerPrefix +
+                raw.toLowerCase().replace(/[^\w\\u4e00-\\u9fa5]]+/g, "-")
+            toc.push({
+                anchor: anchor,
+                level: level,
+                text: text,
+            })
+            return oldRenderer.heading(text, level, raw, slugger)
+        }
+    }
+
     // see https://github.com/markedjs/marked/issues/1538
-    public static renderMarkdown(mkdown: string): string {
+    public static renderMarkdown(mkdown: string): MKRenderResult {
         marked.setOptions({
             highlight: function (code: string, lang: string) {
                 const language = hljs.getLanguage(lang) ? lang : "plaintext"
@@ -79,6 +108,10 @@ export class MarkDownUtil {
         newRenderer.text = (text: string) => {
             return oldRenderer.text(replace_with_math_ids(text))
         }
+
+        let headList: MKHeadItem[] = []
+        this.headListSupport(newRenderer, oldRenderer, headList)
+
         let render_result = marked(mkdown, { renderer: newRenderer })
         render_result = render_result.replace(
             /(__special_katex_id__\d)/g,
@@ -89,6 +122,9 @@ export class MarkDownUtil {
                 })
             }
         )
-        return render_result
+        return {
+            result: render_result,
+            headList: headList,
+        }
     }
 }

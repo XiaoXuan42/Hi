@@ -6,12 +6,12 @@ import * as nunjucks from "nunjucks"
  * Ciphertext is assumed to be stored at the innerText of the tag that has id "ciphertext".
  * Old passwd that was correct is stored as _hi_private_${project_name}_passwd in localStorage.
  *
- * submit_passwd:
+ * submitPasswd:
  *    If the passwd is correct, the original content will be recovered
  */
 let privateScripts: string = String.raw`<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
 <script type="text/javascript">
-  function set_passwd_storage(value) {
+  function setPasswdStorage(value) {
     var date = new Date();
     var data = {
       value: value,
@@ -19,7 +19,7 @@ let privateScripts: string = String.raw`<script type="text/javascript" src="http
     };
     window.localStorage.setItem('_hi_private_passwd', JSON.stringify(data));
   }
-  function get_passwd_storage() {
+  function getPasswdStorage() {
     var data = window.localStorage.getItem('_hi_private_passwd');
     if (data) {
       data = JSON.parse(data);
@@ -31,11 +31,11 @@ let privateScripts: string = String.raw`<script type="text/javascript" src="http
       }
     }
   }
-  function submit_passwd(passwd) {
+  function submitPasswd(passwd) {
     try {
       var html_str = _decipher(passwd);
       _replace(html_str);
-      set_passwd_storage(passwd);
+      setPasswdStorage(passwd);
       return true;
     } catch(error) {
       return false;
@@ -56,9 +56,9 @@ let privateScripts: string = String.raw`<script type="text/javascript" src="http
     document.close();
   }
   window.onload = function() {
-    var passwd = get_passwd_storage();
+    var passwd = getPasswdStorage();
     if (passwd) {
-      submit_passwd(passwd);
+      submitPasswd(passwd);
     }
   }
 </script>`
@@ -94,15 +94,15 @@ const defaultPrivateTemplate = String.raw`<!DOCTYPE html>
 <body>
 <div class="container">
 {{ ciphertext | safe }}
-<input id="passwd_box" type="text" onkeydown="keydown()"/>
+<input id="passwdBox" type="text" onkeydown="keydown()"/>
 </div>
 </body>
 {{ privateScripts | safe }}
 <script type="text/javascript">
 function keydown() {
     if (event.keyCode === 13) {
-        var i = document.getElementById('passwd_box');
-        submit_passwd(i.value);
+        var i = document.getElementById('passwdBox');
+        submitPasswd(i.value);
     }
 }
 </script>

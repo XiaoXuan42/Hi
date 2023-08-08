@@ -32,15 +32,17 @@ export class FsWorker {
     }
 
     public getAbsSrcPath(relpath: string) {
-        return path.join(this.config.projectRootDir, relpath)
+        let p = path.join(this.config.projectRootDir, relpath)
+        return fs.realpathSync(p)
     }
 
     public getAbsTargetPath(relpath: string) {
-        return path.join(this.config.outputDir, relpath)
+        let p = path.join(this.config.outputDir, relpath)
+        return fs.realpathSync(p)
     }
 
-    public async lstatSrc(relpath: string) {
-        return fs.promises.lstat(this.getAbsSrcPath(relpath))
+    public async statSrc(relpath: string) {
+        return fs.promises.stat(this.getAbsSrcPath(relpath))
     }
 
     public async readdirSrc(relpath: string) {

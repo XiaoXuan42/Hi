@@ -58,7 +58,7 @@ export class Hi {
         childrens.forEach((child) => {
             const nextRelPath = this.fsWorker.join(direntry.getRelPath(), child)
             promises.push(
-                this.fsWorker.lstatSrc(nextRelPath).then(
+                this.fsWorker.statSrc(nextRelPath).then(
                     async (stat) => {
                         if (stat.isDirectory()) {
                             await this.fsWorker.mkdirTarget(nextRelPath)
@@ -73,7 +73,7 @@ export class Hi {
                         }
                     },
                     (reason) => {
-                        console.log(`Failed to lstat ${nextRelPath}: ${reason}`)
+                        console.log(`Failed to stat ${nextRelPath}: ${reason}`)
                     }
                 )
             )

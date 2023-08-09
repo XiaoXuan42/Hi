@@ -134,6 +134,7 @@ export class Hi {
     private async _listen() {
         this.assignment.clear()
         let [changeSet, removeSet] = this.listener.getModification()
+        this.listener.clearAll()
         removeSet.forEach((val) => {
             this.fsWorker.remove(val)
         })

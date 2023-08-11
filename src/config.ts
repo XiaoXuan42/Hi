@@ -11,6 +11,7 @@ export class Config {
     readonly projectRootDir: string
     readonly outputDir: string
     readonly includes: string[]
+    readonly excludes: string[]
     readonly extensions: ExtItem[]
     readonly passwd: string
 
@@ -28,6 +29,7 @@ export class Config {
         const json = JSON.parse(file)
         this.outputDir = this.getOrSet(json, "outputDir", "out")
         this.includes = this.getOrSet(json, "includes", [])
+        this.excludes = this.getOrSet(json, "excludes", [])
         this.extensions = this.getOrSet(json, "extensions", [])
         this.passwd = this.getOrSet(json, "passwd", "123qwe!")
     }

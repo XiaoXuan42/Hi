@@ -60,6 +60,7 @@ export class Hi {
     ) {
         const promises: Promise<void>[] = []
         childrens.forEach((child) => {
+            const nextRelPath = this.fsWorker.join(direntry.getRelPath(), child)
             if (specified && specified.length >= 1) {
                 if (child !== specified[0]) {
                     return
@@ -68,8 +69,10 @@ export class Hi {
             if (direntry.hasFile(child) || direntry.hasSubDir(child)) {
                 return
             }
+            if (this.fsWorker.globMatch(nextRelPath, this.config.excludes)) {
+                return
+            }
 
-            const nextRelPath = this.fsWorker.join(direntry.getRelPath(), child)
             promises.push(
                 this.fsWorker.statSrc(nextRelPath).then(
                     async (stat) => {

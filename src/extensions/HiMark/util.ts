@@ -5,6 +5,7 @@ import hljs from "highlight.js"
 
 export class NunjuckUtil {
     private static env: nunjucks.Environment
+    private static math: any
 
     static staticInit() {
         this.env = new nunjucks.Environment()
@@ -14,6 +15,23 @@ export class NunjuckUtil {
             }
             return arr[prop]
         })
+        this.math = {
+            min: Math.min,
+            max: Math.max,
+            abs: Math.abs,
+            floor: Math.floor,
+            ceil: Math.ceil,
+            pow: Math.pow,
+            sign: Math.sign,
+            sqrt: Math.sqrt,
+            round: Math.round,
+            random: Math.random
+        }
+    }
+
+    public static enrichContext(context: any) {
+        context.Math = context.Math ? context.Math : this.math
+        context.Date = context.Date ? context.Date : Date
     }
 
     public static compile(template: string) {
@@ -21,6 +39,7 @@ export class NunjuckUtil {
     }
 
     public static renderString(template: string, context: any): string {
+        this.enrichContext(context)
         return this.env.renderString(template, context)
     }
 }

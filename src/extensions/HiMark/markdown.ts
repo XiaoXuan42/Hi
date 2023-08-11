@@ -88,6 +88,8 @@ export class MarkDownBackend implements BackEnd {
 
     public transform(file: File) {
         const data = file.data as MarkDownData
-        return this.templateCompiled.render({ markdown: data })
+        const context = { markdown: data }
+        NunjuckUtil.enrichContext(context)
+        return this.templateCompiled.render(context)
     }
 }

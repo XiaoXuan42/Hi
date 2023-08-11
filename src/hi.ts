@@ -53,9 +53,22 @@ export class Hi {
         }
     }
 
-    private async initAssignRecur(direntry: DirEntry, childrens: string[]) {
+    private async initAssignRecur(
+        direntry: DirEntry,
+        childrens: string[],
+        specified?: string[]
+    ) {
         const promises: Promise<void>[] = []
         childrens.forEach((child) => {
+            if (specified && specified.length >= 1) {
+                if (child !== specified[0]) {
+                    return
+                }
+            }
+            if (direntry.hasFile(child) || direntry.hasSubDir(child)) {
+                return
+            }
+
             const nextRelPath = this.fsWorker.join(direntry.getRelPath(), child)
             promises.push(
                 this.fsWorker.statSrc(nextRelPath).then(
@@ -66,7 +79,15 @@ export class Hi {
                                 nextRelPath
                             )
                             const newDirEntry = direntry.getOrAddSubDir(child)
-                            await this.initAssignRecur(newDirEntry, files)
+                            const nextSpecified =
+                                specified && specified.length > 1
+                                    ? specified.slice(1)
+                                    : undefined
+                            await this.initAssignRecur(
+                                newDirEntry,
+                                files,
+                                nextSpecified
+                            )
                         } else {
                             const newFile = direntry.getOrAddFile(child)
                             this.assign(newFile)
@@ -82,16 +103,31 @@ export class Hi {
     }
 
     private async initAssign() {
-        return this.initAssignRecur(this.fsWorker.root, this.config.includes)
+        const promises: Promise<void[]>[] = []
+        this.config.includes.forEach((include) => {
+            const specified = this.fsWorker.separatePath(include)
+            promises.push(
+                this.initAssignRecur(
+                    this.fsWorker.root,
+                    [specified[0]],
+                    specified
+                )
+            )
+        })
+        await Promise.all(promises)
     }
 
     private async mapPhase() {
         const promises: Promise<void>[] = []
         this.assignment.forEach((files, ext) => {
             files.forEach((file) => {
-                promises.push(ext.map(file).catch((reason) => {
-                    console.log(`Map error: ${file.getRelPath()}: ${reason}`)
-                }))
+                promises.push(
+                    ext.map(file).catch((reason) => {
+                        console.log(
+                            `Map error: ${file.getRelPath()}: ${reason}`
+                        )
+                    })
+                )
             })
         })
         return Promise.all(promises)
@@ -102,15 +138,20 @@ export class Hi {
         this.assignment.forEach((files, ext) => {
             files.forEach((file) => {
                 promises.push(
-                    ext.reduce(file).then(async (results) => {
-                        const promises2: Promise<void>[] = []
-                        results.forEach((result) => {
-                            promises2.push(this.executeResult(result))
+                    ext
+                        .reduce(file)
+                        .then(async (results) => {
+                            const promises2: Promise<void>[] = []
+                            results.forEach((result) => {
+                                promises2.push(this.executeResult(result))
+                            })
+                            await Promise.all(promises2)
                         })
-                        await Promise.all(promises2)
-                    }).catch((reason) => {
-                        console.log(`Reduce error: ${file.getRelPath()}: ${reason}`)
-                    })
+                        .catch((reason) => {
+                            console.log(
+                                `Reduce error: ${file.getRelPath()}: ${reason}`
+                            )
+                        })
                 )
             })
         })

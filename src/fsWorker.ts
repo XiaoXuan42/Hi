@@ -22,6 +22,12 @@ export class FsWorker {
         return path.join(...paths)
     }
 
+    public separatePath(p: string) {
+        let sep = p.split(path.sep)
+        sep = sep.filter((s) => { return s !== "" })
+        return sep
+    }
+
     public globMatch(p: string, patterns: string[]): boolean {
         for (const pattern of patterns) {
             if (minimatch(p, pattern)) {
@@ -43,6 +49,10 @@ export class FsWorker {
 
     public async statSrc(relpath: string) {
         return fs.promises.stat(this.getAbsSrcPath(relpath))
+    }
+
+    public statSrcSync(relpath: string) {
+        return fs.statSync(this.getAbsSrcPath(relpath))
     }
 
     public async readdirSrc(relpath: string) {

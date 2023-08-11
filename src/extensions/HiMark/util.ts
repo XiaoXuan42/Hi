@@ -102,34 +102,14 @@ export class MarkDownUtil {
             })
             return text
         }
-
-        newRenderer.listitem = (
-            text: string,
-            task: boolean,
-            checked: boolean
-        ) => {
-            return oldRenderer.listitem(
-                replace_with_math_ids(text),
-                task,
-                checked
-            )
-        }
-        newRenderer.paragraph = (text: string) => {
-            return oldRenderer.paragraph(replace_with_math_ids(text))
-        }
-        newRenderer.tablecell = (content: string, flags) => {
-            return oldRenderer.tablecell(replace_with_math_ids(content), flags)
-        }
-        newRenderer.text = (text: string) => {
-            return oldRenderer.text(replace_with_math_ids(text))
-        }
+        mkdown = replace_with_math_ids(mkdown)
 
         let headList: MKHeadItem[] = []
         this.headListSupport(newRenderer, headList)
 
         let render_result = marked(mkdown, { renderer: newRenderer })
         render_result = render_result.replace(
-            /(__special_katex_id__\d)/g,
+            /(__special_katex_id__\d+)/g,
             (_match, capture) => {
                 const { type, expression } = math_expressions[capture]
                 return katex.renderToString(expression, {

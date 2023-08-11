@@ -87,8 +87,9 @@ export class HiMark implements Extension {
                 const backend = this.getBackEnd(file)
                 file.data = backend.prepareData(file)
             })
-            .catch((_) => {
+            .catch((reason) => {
                 file.data = undefined
+                throw reason
             })
     }
 

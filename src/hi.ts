@@ -89,7 +89,9 @@ export class Hi {
         const promises: Promise<void>[] = []
         this.assignment.forEach((files, ext) => {
             files.forEach((file) => {
-                promises.push(ext.map(file))
+                promises.push(ext.map(file).catch((reason) => {
+                    console.log(`Map error: ${file.getRelPath()}: ${reason}`)
+                }))
             })
         })
         return Promise.all(promises)
@@ -106,6 +108,8 @@ export class Hi {
                             promises2.push(this.executeResult(result))
                         })
                         await Promise.all(promises2)
+                    }).catch((reason) => {
+                        console.log(`Reduce error: ${file.getRelPath()}: ${reason}`)
                     })
                 )
             })

@@ -31,9 +31,7 @@ class MarkDownData {
         public stylesheet: string,
         public relUrl: string,
         public frontMatter: any,
-        public headList: MKHeadItem[],
-        public file: File,
-        public fs: FsWorker
+        public headList: MKHeadItem[]
     ) {}
 }
 
@@ -59,15 +57,7 @@ export class MarkDownBackend implements BackEnd {
     private configureFromContent(file: File) {
         let [fname, _] = file.getFileAndExtName()
         const relUrl = this.fsWorker.join(file.getDirname(), fname + ".html")
-        const mkdown: MarkDownData = new MarkDownData(
-            "",
-            "",
-            relUrl,
-            {},
-            [],
-            file,
-            this.fsWorker
-        )
+        const mkdown: MarkDownData = new MarkDownData("", "", relUrl, {}, [])
         const fmRes = fm.default(file.content as string)
         const frontMatter = fmRes.attributes
         const renderRes = MarkDownUtil.renderMarkdown(fmRes.body)

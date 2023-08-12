@@ -112,9 +112,14 @@ export class MarkDownUtil {
             /(__special_katex_id__\d+)/g,
             (_match, capture) => {
                 const { type, expression } = math_expressions[capture]
-                return katex.renderToString(expression, {
+                const katexCode = katex.renderToString(expression, {
                     displayMode: type === "block",
                 })
+                if (type === "block") {
+                    return `<div class="_hi_katex_block_math">${katexCode}</div>`
+                } else {
+                    return `<span class="_hi_katex_inline_math">${katexCode}</span>`
+                }
             }
         )
         return {

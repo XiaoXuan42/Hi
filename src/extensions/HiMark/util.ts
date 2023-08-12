@@ -15,6 +15,20 @@ export class NunjuckUtil {
             }
             return arr[prop]
         })
+        this.env.addFilter("collectAttrs", (arr, props: string[]) => {
+            function sel(obj: any) {
+                let result: any = {}
+                for (let prop of props) {
+                    result[prop] = obj[prop]
+                }
+                return result
+            }
+            if (arr instanceof Array) {
+                return arr.map((e) => sel(e))
+            }
+            return sel(arr)
+        })
+
         this.math = {
             min: Math.min,
             max: Math.max,

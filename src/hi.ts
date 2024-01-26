@@ -55,11 +55,11 @@ export class Hi {
 
     private async initAssignRecur(
         direntry: DirEntry,
-        childrens: string[],
+        children: string[],
         specified?: string[]
     ) {
         const promises: Promise<void>[] = []
-        childrens.forEach((child) => {
+        children.forEach((child) => {
             const nextRelPath = this.fsWorker.join(direntry.getRelPath(), child)
             if (specified && specified.length >= 1) {
                 if (child !== specified[0]) {
@@ -180,21 +180,24 @@ export class Hi {
     }
 
     private async _listen() {
-        this.assignment.clear()
         let [changeSet, removeSet] = this.listener.getModification()
         this.listener.clearAll()
-        removeSet.forEach((val) => {
-            this.fsWorker.remove(val)
-        })
-        changeSet.forEach((val) => {
-            const inode = this.fsWorker.visitByPath(val)
-            if (inode && inode.isFile()) {
-                this.assign(inode as File)
-            }
-        })
-        await this.mapPhase()
-        await this.reducePhase()
-        this.assignment.clear()
+
+        if (removeSet.size !== 0 || changeSet.size !== 0) {
+            this.assignment.clear()
+            removeSet.forEach((val) => {
+                this.fsWorker.remove(val)
+            })
+            changeSet.forEach((val) => {
+                const inode = this.fsWorker.visitByPath(val)
+                if (inode && inode.isFile()) {
+                    this.assign(inode as File)
+                }
+            })
+            await this.mapPhase()
+            await this.reducePhase()
+            this.assignment.clear()
+        }
     }
 
     private _listen_entry() {

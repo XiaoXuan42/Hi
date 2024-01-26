@@ -58,7 +58,7 @@ export class DirEntry implements INode {
     private name: string
     private parent: DirEntry | undefined
     private relpath: string
-    private childrens: { [name: string]: INode }
+    private children: { [name: string]: INode }
     private subdirs: { [name: string]: DirEntry }
     private files: { [name: string]: File }
 
@@ -67,7 +67,7 @@ export class DirEntry implements INode {
         this.parent = parent
         this.relpath = name
 
-        this.childrens = {}
+        this.children = {}
         this.subdirs = {}
         if (this.parent !== undefined && this.parent.relpath !== "") {
             this.relpath = path.join(this.parent.relpath, this.name)
@@ -93,7 +93,7 @@ export class DirEntry implements INode {
 
     public getSubDir(dirname: string): DirEntry | undefined {
         if (dirname in this.subdirs) {
-            assert(dirname in this.childrens)
+            assert(dirname in this.children)
             return this.subdirs[dirname]
         }
     }
@@ -102,10 +102,10 @@ export class DirEntry implements INode {
         if (dirname in this.subdirs) {
             return this.subdirs[dirname]
         }
-        assert(!(dirname in this.childrens))
+        assert(!(dirname in this.children))
         let children = new DirEntry(this, dirname)
         this.subdirs[dirname] = children
-        this.childrens[dirname] = children
+        this.children[dirname] = children
         return children
     }
 
@@ -121,25 +121,25 @@ export class DirEntry implements INode {
 
     public getOrAddFile(filename: string): File {
         if (filename in this.files) {
-            assert(filename in this.childrens)
+            assert(filename in this.children)
             return this.files[filename]
         }
-        assert(!(filename in this.childrens))
+        assert(!(filename in this.children))
         let children = new File(path.join(this.relpath, filename))
         this.files[filename] = children
-        this.childrens[filename] = children
+        this.children[filename] = children
         return children
     }
 
     public getChild(name: string): INode | undefined {
-        if (name in this.childrens) {
-            return this.childrens[name]
+        if (name in this.children) {
+            return this.children[name]
         }
     }
 
     public remove(name: string) {
-        if (name in this.childrens) {
-            delete this.childrens[name]
+        if (name in this.children) {
+            delete this.children[name]
         }
         if (name in this.subdirs) {
             delete this.subdirs[name]

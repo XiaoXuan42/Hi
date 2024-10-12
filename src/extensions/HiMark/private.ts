@@ -1,6 +1,8 @@
 import CryptoJS from "crypto-js"
-import { FsWorker } from "../../fsWorker"
 import * as nunjucks from "nunjucks"
+import { Config } from "../../config.js"
+import * as fs from "node:fs"
+import * as path from "node:path"
 
 /**
  * Ciphertext is assumed to be stored at the innerText of the tag that has id "ciphertext".
@@ -123,12 +125,12 @@ export class PrivateConfig {
 
 export class PrivateProcessor {
     private templateStr: string
+    private glbConfig: Config
 
-    constructor(config: PrivateConfig, fsWorker: FsWorker) {
+    constructor(config: PrivateConfig, glbConfig: Config) {
+        this.glbConfig = glbConfig
         if (config.templatePath) {
-            this.templateStr = fsWorker
-                .readSrcSync(config.templatePath)
-                .toString("utf-8")
+            this.templateStr = fs.readFileSync(path.join(glbConfig.projectRootDir, config.templatePath)).toString("utf-8")
         } else {
             this.templateStr = defaultPrivateTemplate
         }

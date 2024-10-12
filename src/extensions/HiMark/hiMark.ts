@@ -1,137 +1,123 @@
 import {
     Extension,
-    ExtensionConfig,
-    ExtensionFactor,
-    ExtensionResult,
-} from "../../extension"
-import { FsWorker } from "../../fsWorker"
-import { File } from "../../file"
-import { MarkDownBackend, MarkDownBackendConfig } from "./markdown"
-import { PugBackend } from "./pug"
-import { JinjaBackend } from "./jinja"
-import { HtmlBackend } from "./html"
-import { PrivateProcessor, PrivateConfig } from "./private"
-import { BackEnd } from "./backend"
+} from "../../extension.js"
+import { File } from "../../file.js"
+import { MarkDownBackend, MarkDownBackendConfig } from "./markdown.js"
+import { PugBackend } from "./pug.js"
+import { JinjaBackend } from "./jinja.js"
+import { HtmlBackend } from "./html.js"
+import { PrivateProcessor, PrivateConfig } from "./private.js"
+import { BackEnd } from "./backend.js"
+import { Consts } from "./consts.js"
+import Environment from "../../environment.js"
+import path from "node:path"
+import * as fs from "node:fs"
+import { Config } from "../../config.js"
+import fsUtil from "../../fsUtil.js"
 
-export class HiMarkConfig implements ExtensionConfig {
-    public extname: string
+export class HiMarkConfig {
     public markdown?: MarkDownBackendConfig
     public private?: PrivateConfig
-
-    constructor() {
-        this.extname = HiMark.extname
-    }
 }
 
-export class HiMark implements Extension {
+export class HiMark extends Extension {
     private config: HiMarkConfig
+    private glbConfig: Config
     private htmlBackend: HtmlBackend
     private mkBackend: MarkDownBackend
     private jinjaBackend: JinjaBackend
     private pugBackend: PugBackend
-    private privateBackend: PrivateProcessor
-    private fsWorker: FsWorker
+    private privateProcessor: PrivateProcessor
 
-    public static readonly extname = "Hi:HiMark"
-
-    constructor(config: ExtensionConfig, fsWorker: FsWorker) {
-        this.fsWorker = fsWorker
-        let hiConfig = config as HiMarkConfig
+    constructor(glbConfig: Config, hiConfig: HiMarkConfig) {
+        super()
         this.config = hiConfig
+        this.glbConfig = glbConfig
 
         this.htmlBackend = new HtmlBackend()
         if (hiConfig.markdown?.templatePath) {
-            this.mkBackend = new MarkDownBackend(hiConfig.markdown, fsWorker)
+            this.mkBackend = new MarkDownBackend(glbConfig, hiConfig.markdown)
         } else {
             this.mkBackend = new MarkDownBackend(
-                new MarkDownBackendConfig(),
-                fsWorker
+                glbConfig,
+                new MarkDownBackendConfig()
             )
         }
-        this.jinjaBackend = new JinjaBackend(this.fsWorker)
+        this.jinjaBackend = new JinjaBackend()
         this.pugBackend = new PugBackend()
 
         if (hiConfig.private?.templatePath) {
-            this.privateBackend = new PrivateProcessor(
-                hiConfig.private,
-                fsWorker
+            this.privateProcessor = new PrivateProcessor(
+                hiConfig.private, this.glbConfig
             )
         } else {
-            this.privateBackend = new PrivateProcessor(
+            this.privateProcessor = new PrivateProcessor(
                 new PrivateConfig("Hi:HiMark", "Hi:HiMark:Passwd", []),
-                fsWorker
+                this.glbConfig
             )
         }
     }
+
+    public getName(): string { return Consts.extname }
 
     private getBackEnd(file: File): BackEnd {
-        let [_, extname] = file.getFileAndExtName()
-        if (extname === "html") {
+        let [_, extensionName] = file.getFileAndExtName()
+        if (extensionName === "html") {
             return this.htmlBackend
-        } else if (extname === "md") {
+        } else if (extensionName === "md") {
             return this.mkBackend
-        } else if (extname === "jinja") {
+        } else if (extensionName === "jinja") {
             return this.jinjaBackend
-        } else if (extname === "pug") {
+        } else if (extensionName === "pug") {
             return this.pugBackend
         } else {
-            throw `Wrong assignment for HiMark: ${file.getRelPath()}`
+            throw `Wrong assignment for HiMark: ${file.getSrcRelPath()}`
         }
     }
 
-    public async map(file: File) {
-        await this.fsWorker
-            .readSrc(file.getRelPath())
-            .then((buffer) => {
+    public accept(file: File): boolean {
+        return true
+    }
+
+    public async map(file: File, env: Environment) {
+        await fs.promises.readFile(file.getSrcAbsPath()).then(
+            async (buffer) => {
                 file.content = buffer.toString("utf-8")
                 const backend = this.getBackEnd(file)
-                file.data = backend.prepareData(file)
-            })
-            .catch((reason) => {
-                file.data = undefined
-                throw reason
-            })
+                const data = await backend.prepareData(file, env)
+                file.data.set(Consts.extname, data)
+            }
+        )
     }
 
-    public async reduce(file: File): Promise<ExtensionResult[]> {
-        let [fname, _] = file.getFileAndExtName()
-        const filename = fname + ".html"
-        const targetRelPath = this.fsWorker.join(file.getDirname(), filename)
-        const content: string = file.content as string
+    public async reduce(files: File[], env: Environment) {
+        const jobs: Promise<void>[] = []
+        for (const file of files) {
+            let [fname, _] = file.getFileAndExtName()
+            const filename = fname + ".html"
+            const targetPath = path.join(
+                env.router.route(path.dirname(file.getSrcAbsPath())), 
+                filename)
+            const backend = this.getBackEnd(file)
+            let content = backend.transform(file, env)
 
-        let result: ExtensionResult = {
-            file: file,
-            targetRelPath: targetRelPath,
-            filename: filename,
-            content: content,
-            succ: true,
-            errMsg: "",
-        }
+            let isPrivate = false
+            if (this.config.private) {
+                isPrivate = fsUtil.globMatch(
+                    file.getSrcRelPath(),
+                    this.config.private.files
+                )
+            }
+            if (isPrivate && this.config.private) {
+                content = this.privateProcessor.transform(
+                    this.config.private.keyName,
+                    content as string,
+                    this.config.private.passwd
+                )
+            }
 
-        const backend = this.getBackEnd(file)
-        result.content = backend.transform(file)
-
-        let isPrivate = false
-        if (this.config.private) {
-            isPrivate = this.fsWorker.globMatch(
-                file.getRelPath(),
-                this.config.private.files
-            )
+            jobs.push(fsUtil.ensureDirWriteAsyn(targetPath, content))
         }
-        if (isPrivate && this.config.private) {
-            result.content = this.privateBackend.transform(
-                this.config.private.keyName,
-                result.content as string,
-                this.config.private.passwd
-            )
-        }
-        return [result]
+        await Promise.all(jobs)
     }
-}
-
-export const HiMarkFactor: ExtensionFactor = (
-    config: ExtensionConfig,
-    fsWorker: FsWorker
-) => {
-    return new HiMark(config, fsWorker)
 }

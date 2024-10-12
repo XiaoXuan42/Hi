@@ -5,18 +5,21 @@ import { assert } from "node:console"
 export interface INode {
     getName(): string
     isFile(): boolean
-    getRelPath(): string
+    getSrcRelPath(): string
+    getSrcAbsPath(): string
 }
 
 export class File implements INode {
-    private relPath: string
-    public content: string | Buffer
-    public data: any
+    private srcRoot: string
+    private srcRelPath: string
+    public content: undefined | string | Buffer
+    public data: Map<string, any>  // 用来存储生成过程中所需的额外信息，键值一般是extension的名字
 
-    constructor(relPath: string) {
-        this.relPath = relPath
-        this.content = ""
-        this.data = undefined
+    constructor(srcRoot: string, srcRelPath: string) {
+        this.srcRoot = srcRoot
+        this.srcRelPath = srcRelPath
+        this.content = undefined
+        this.data = new Map()
     }
 
     public getName() {
@@ -27,20 +30,24 @@ export class File implements INode {
         return true
     }
 
-    public getRelPath(): string {
-        return this.relPath
+    public getSrcRelPath(): string {
+        return this.srcRelPath
+    }
+
+    public getSrcAbsPath(): string {
+        return path.join(this.srcRoot, this.srcRelPath)
     }
 
     public getDirname(): string {
-        return path.dirname(this.relPath)
+        return path.dirname(this.srcRelPath)
     }
 
     public getBasename(): string {
-        return path.basename(this.relPath)
+        return path.basename(this.srcRelPath)
     }
 
     public getFileAndExtName(): [string, string] {
-        const basename = path.basename(this.relPath)
+        const basename = path.basename(this.srcRelPath)
         const index = basename.lastIndexOf(".")
         let filename: string, extname: string
         if (index <= 0) {
@@ -57,14 +64,16 @@ export class File implements INode {
 export class DirEntry implements INode {
     private name: string
     private parent: DirEntry | undefined
+    private root: string
     private relpath: string
     private children: { [name: string]: INode }
     private subdirs: { [name: string]: DirEntry }
     private files: { [name: string]: File }
 
-    constructor(parent: DirEntry | undefined, name: string) {
+    constructor(root: string, parent: DirEntry | undefined, name: string) {
         this.name = name
         this.parent = parent
+        this.root = root
         this.relpath = name
 
         this.children = {}
@@ -83,8 +92,12 @@ export class DirEntry implements INode {
         return false
     }
 
-    public getRelPath(): string {
+    public getSrcRelPath(): string {
         return this.relpath
+    }
+
+    public getSrcAbsPath(): string {
+        return path.join(this.root, this.relpath)
     }
 
     public hasSubDir(dirname: string) {
@@ -103,7 +116,7 @@ export class DirEntry implements INode {
             return this.subdirs[dirname]
         }
         assert(!(dirname in this.children))
-        let children = new DirEntry(this, dirname)
+        let children = new DirEntry(this.root, this, dirname)
         this.subdirs[dirname] = children
         this.children[dirname] = children
         return children
@@ -125,7 +138,7 @@ export class DirEntry implements INode {
             return this.files[filename]
         }
         assert(!(filename in this.children))
-        let children = new File(path.join(this.relpath, filename))
+        let children = new File(this.root, path.join(this.relpath, filename))
         this.files[filename] = children
         this.children[filename] = children
         return children

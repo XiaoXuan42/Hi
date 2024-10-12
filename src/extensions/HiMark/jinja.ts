@@ -1,19 +1,19 @@
-import { BackEnd } from "./backend"
+import { BackEnd } from "./backend.js"
 
-import { File } from "../../file"
-import { MarkDownUtil, NunjuckUtil } from "./util"
-import { FsWorker } from "../../fsWorker"
+import { File } from "../../file.js"
+import { NunjuckUtil } from "./util.js"
+import { MarkDownUtil } from "../../markdown.js"
+import Environment from "../../environment.js"
 
-class JinjaData {
-    constructor() {}
-}
 
 export class JinjaBackend implements BackEnd {
-    private fsWorker: FsWorker
-    constructor(fsWorker: FsWorker) {
-        this.fsWorker = fsWorker
-    }
+    constructor() {}
 
+    /**
+     * <markdown>标签里的{%等字符串不会按照作为模版的一部分处理
+     * @param oldContent 
+     * @returns 
+     */
     // convert <markdown>...</markdown> to html
     static convertMkTag(oldContent: string): string {
         let mkdownRegex = /<markdown>[^]*?<\/markdown>/g
@@ -57,13 +57,13 @@ export class JinjaBackend implements BackEnd {
         return result
     }
 
-    public prepareData(file: File) {
-        return new JinjaData()
+    public async prepareData(file: File, env: Environment) {
+        return undefined
     }
 
-    public transform(file: File) {
+    public transform(file: File, env: Environment) {
         let newContent = JinjaBackend.convertMkTag(file.content as string)
-        let context: any = { fs: this.fsWorker }
+        let context: any = { local: file.data, global: env }
         return NunjuckUtil.renderString(newContent, context)
     }
 }

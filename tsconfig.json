@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
-        "target": "ES2021",
-        "module": "commonjs",
+        "target": "ESNext",
+        "module": "ESNext",
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
@@ -11,7 +11,8 @@
         "strict": true,
         "skipLibCheck": true,
         "moduleResolution": "node",
-        "noImplicitThis": true
+        "noImplicitThis": true,
+        "noImplicitAny": false
     },
     "include": ["src/**/*"],
     "exclude": ["node_modules"]

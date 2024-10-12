@@ -6,6 +6,7 @@
   "bin": {
     "Hi": "bin/Hi"
   },
+  "type": "module",
   "scripts": {},
   "author": "",
   "license": "MIT",
@@ -27,6 +28,7 @@
     "chokidar": "^3.5.3",
     "commander": "^5.1.0",
     "crypto-js": "^4.1.1",
+    "execa": "^9.4.0",
     "front-matter": "^4.0.2",
     "glob": "^10.3.3",
     "highlight.js": "^11.5.1",

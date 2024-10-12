@@ -1,14 +1,11 @@
-import * as fm from "front-matter"
-import { NunjuckUtil, MarkDownUtil, MKHeadItem } from "./util"
-import { FsWorker } from "../../fsWorker"
-import { File } from "../../file"
-import { BackEnd } from "./backend"
-
-const katexCss = String.raw`<link rel="stylesheet" 
-href="https://cdn.jsdelivr.net/npm/katex@0.15.6/dist/katex.min.css"
-integrity="sha384-ZPe7yZ91iWxYumsBEOn7ieg8q/o+qh/hQpSaPow8T6BwALcXSCS6C6fSRPIAnTQs" crossorigin="anonymous">`
-const highlightCss = String.raw`<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">`
-const mkStyleSheet = [katexCss, highlightCss].join("\n")
+import { NunjuckUtil } from "./util.js"
+import { File } from "../../file.js"
+import { BackEnd } from "./backend.js"
+import { Consts } from "./consts.js"
+import { MarkDownUtil } from "../../markdown.js"
+import { Config } from "../../config.js"
+import * as fs from "node:fs"
+import * as path from "node:path"
 
 const defaultMarkdownTemplate = String.raw`<html>
 <head>
@@ -23,61 +20,35 @@ const defaultMarkdownTemplate = String.raw`<html>
 
 export class MarkDownBackendConfig {
     public templatePath?: string
-}
 
-class MarkDownData {
-    constructor(
-        public html: string,
-        public stylesheet: string,
-        public relUrl: string,
-        public frontMatter: any,
-        public headList: MKHeadItem[]
-    ) {}
+    constructor(templatePath?: string) {
+        this.templatePath = templatePath
+    }
 }
 
 export class MarkDownBackend implements BackEnd {
     private config: MarkDownBackendConfig
-    private fsWorker: FsWorker
     private templateStr: string
     private templateCompiled
 
-    constructor(config: MarkDownBackendConfig, fsWorker: FsWorker) {
+    constructor(glbConfig: Config, config: MarkDownBackendConfig) {
         this.config = config
-        this.fsWorker = fsWorker
-        if (config.templatePath) {
-            this.templateStr = fsWorker
-                .readSrcSync(config.templatePath)
-                .toString("utf-8")
+        if (this.config.templatePath) {
+            this.templateStr = fs.readFileSync(
+                path.join(glbConfig.projectRootDir, this.config.templatePath)
+            ).toString("utf-8")
         } else {
             this.templateStr = defaultMarkdownTemplate
         }
         this.templateCompiled = NunjuckUtil.compile(this.templateStr)
     }
 
-    private configureFromContent(file: File) {
-        let [fname, _] = file.getFileAndExtName()
-        const relUrl = this.fsWorker.join(file.getDirname(), fname + ".html")
-        const mkdown: MarkDownData = new MarkDownData("", "", relUrl, {}, [])
-        const fmRes = fm.default(file.content as string)
-        const frontMatter = fmRes.attributes
-        const renderRes = MarkDownUtil.renderMarkdown(fmRes.body)
-        mkdown.html = `<div class="markdown">${renderRes.result}</div>`
-        mkdown.stylesheet = mkStyleSheet
-        mkdown.frontMatter = frontMatter
-        mkdown.headList = renderRes.headList
-
-        if ("date" in mkdown.frontMatter) {
-            mkdown.frontMatter.date = new Date(mkdown.frontMatter.date)
-        }
-        return mkdown
-    }
-
-    public prepareData(file: File) {
-        return this.configureFromContent(file)
+    public async prepareData(file: File) {
+        return MarkDownUtil.configure(file)
     }
 
     public transform(file: File) {
-        const data = file.data as MarkDownData
+        const data = file.data.get(Consts.extname)
         const context = { markdown: data }
         NunjuckUtil.enrichContext(context)
         return this.templateCompiled.render(context)

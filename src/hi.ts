@@ -1,99 +1,82 @@
-import { Config } from "./config"
-import { ExtWorker } from "./extWorker"
-import { File, DirEntry } from "./file"
-import { execSync } from "child_process"
-import { FsWorker } from "./fsWorker"
-import { Listener } from "./listen"
-import { Extension, ExtensionResult } from "./extension"
-import { Server } from "./server"
+import * as fs from "node:fs"
+import { Config } from "./config.js"
+import { ExtWorker } from "./extWorker.js"
+import { File } from "./file.js"
+import { Extension } from "./extension.js"
+import path from "path"
+import fsUtil from "./fsUtil.js"
+import Environment from "./environment.js"
+import { Router } from "./router.js"
+import http from "node:http"
 
 export class Hi {
     readonly config: Config
-    private fsWorker: FsWorker
-    private listener: Listener
-    private isListening: boolean
+    private environment: Environment
+    private extWorker: ExtWorker
+    private router: Router
+
     private assignment: Map<Extension, File[]>
-    private server: Server
-    public extWorker: ExtWorker
 
     constructor(config: Config) {
         this.config = config
-        this.fsWorker = new FsWorker(config)
-        this.extWorker = new ExtWorker(config, this.fsWorker)
-        this.listener = new Listener(config)
         this.assignment = new Map()
-        this.server = new Server(this.config, this.fsWorker)
-        this.isListening = false
+        this.extWorker = new ExtWorker(config)
+        this.router = new Router(config)
+        this.environment = new Environment(config, this.router)
     }
 
-    private async executeResult(result: ExtensionResult) {
-        if (result.succ) {
-            await this.fsWorker
-                .writeTarget(result.targetRelPath, result.content)
-                .catch((reason) => {
-                    console.log(
-                        `Failed to write ${result.targetRelPath}: ${reason}`
-                    )
-                })
-        } else {
-            console.log(
-                `Failed to generate file for ${result.file.getRelPath()}: ${
-                    result.errMsg
-                }`
-            )
-        }
+    public async initExtension() {
+        await this.extWorker.loadExtensions()
     }
 
-    private assign(file: File) {
-        const ext = this.extWorker.getExtension(file, this.fsWorker)
-        if (this.assignment.has(ext)) {
-            this.assignment.get(ext)!.push(file)
-        } else {
-            this.assignment.set(ext, [file])
-        }
-    }
-
+    /**
+     * 将文件按照规则分配给插件处理
+     * @param relpath 输入的相对路径（相对于projectRoot）
+     * @param children 可能的子目录列表
+     * @param specified 指定的路径，如果非空，那么只能遍历指定的路径
+     * @returns 
+     */
     private async initAssignRecur(
-        direntry: DirEntry,
+        relpath: string,
         children: string[],
         specified?: string[]
     ) {
         const promises: Promise<void>[] = []
         children.forEach((child) => {
-            const nextRelPath = this.fsWorker.join(direntry.getRelPath(), child)
+            const nextRelPath = path.join(relpath, child)
+            const nextSrcAbsPath = path.join(this.config.projectRootDir, nextRelPath)
             if (specified && specified.length >= 1) {
                 if (child !== specified[0]) {
                     return
                 }
             }
-            if (direntry.hasFile(child) || direntry.hasSubDir(child)) {
-                return
-            }
-            if (this.fsWorker.globMatch(nextRelPath, this.config.excludes)) {
+
+            if (fsUtil.globMatch(nextRelPath, this.config.excludes)) {
                 return
             }
 
             promises.push(
-                this.fsWorker.statSrc(nextRelPath).then(
+                fs.promises.stat(path.join(nextSrcAbsPath)).then(
                     async (stat) => {
                         if (stat.isDirectory()) {
-                            await this.fsWorker.mkdirTarget(nextRelPath)
-                            const files = await this.fsWorker.readdirSrc(
-                                nextRelPath
-                            )
-                            const newDirEntry = direntry.getOrAddSubDir(child)
+                            const files = await fs.promises.readdir(nextSrcAbsPath)
                             const nextSpecified =
                                 specified && specified.length > 1
                                     ? specified.slice(1)
                                     : undefined
                             await this.initAssignRecur(
-                                newDirEntry,
+                                nextRelPath,
                                 files,
                                 nextSpecified
                             )
                         } else {
-                            const newFile = direntry.getOrAddFile(child)
-                            this.assign(newFile)
+                            const newFile = new File(this.config.projectRootDir, nextRelPath)
+                            const ext = this.extWorker.getExtension(newFile)
+                            if (this.assignment.has(ext)) {
+                                this.assignment.get(ext)?.push(newFile)
+                            } else {
+                                this.assignment.set(ext, [newFile])
+                            }
                         }
                     },
                     (reason) => {
@@ -108,10 +91,10 @@ export class Hi {
     private async initAssign() {
         const promises: Promise<void[]>[] = []
         this.config.includes.forEach((include) => {
-            const specified = this.fsWorker.separatePath(include)
+            const specified = fsUtil.separatePath(include)
             promises.push(
                 this.initAssignRecur(
-                    this.fsWorker.root,
+                    "",
                     [specified[0]],
                     specified
                 )
@@ -122,123 +105,69 @@ export class Hi {
 
     private async mapPhase() {
         const promises: Promise<void>[] = []
-        this.assignment.forEach((files, ext) => {
-            files.forEach((file) => {
-                promises.push(
-                    ext.map(file).catch((reason) => {
-                        console.log(
-                            `Map error: ${file.getRelPath()}: ${reason}`
-                        )
-                    })
-                )
-            })
-        })
+        for (const [ext, files] of this.assignment) {
+            for (const file of files) {
+                promises.push(ext.map(file, this.environment).catch((reason) => {
+                    console.log(`Map error: ${file.getSrcAbsPath()}: ${reason}`)
+                }))
+            }
+        }
         return Promise.all(promises)
     }
 
     private async reducePhase() {
         const promises: Promise<void>[] = []
-        this.assignment.forEach((files, ext) => {
-            files.forEach((file) => {
-                promises.push(
-                    ext
-                        .reduce(file)
-                        .then(async (results) => {
-                            const promises2: Promise<void>[] = []
-                            results.forEach((result) => {
-                                promises2.push(this.executeResult(result))
-                            })
-                            await Promise.all(promises2)
-                        })
-                        .catch((reason) => {
-                            console.log(
-                                `Reduce error: ${file.getRelPath()}: ${reason}`
-                            )
-                        })
-                )
-            })
-        })
+        for (const [ext, files] of this.assignment) {
+            promises.push(
+                ext.reduce(files, this.environment)
+                    .catch((reason) => { console.log(`Reduce error: ${ext.getName()}: ${reason}`)})
+            )
+        }
         return Promise.all(promises)
     }
 
-    public async initGenerate() {
+    public async generate() {
         this.assignment.clear()
         await this.initAssign()
+        this.extWorker.extensions.forEach(([_, ext]) => { ext.beforeMap(this.environment) })
         await this.mapPhase()
+        this.extWorker.extensions.forEach(([_, ext]) => { ext.beforeReduce(this.environment) })
         await this.reducePhase()
+        this.extWorker.extensions.forEach(([_, ext]) => { ext.beforeFinish(this.environment) })
         this.assignment.clear()
     }
 
-    public gitCommit(message: string): string {
-        const git_out = execSync(`git add . && git commit -m ${message}`, {
-            cwd: this.config.outputDir,
-        })
-        const push_out = execSync(`git push`, {
-            cwd: this.config.outputDir,
-        })
-        return `${git_out.toString()}\n${push_out.toString()}`
-    }
-
-    private async _listen() {
-        let [changeSet, removeSet] = this.listener.getModification()
-        this.listener.clearAll()
-
-        if (removeSet.size !== 0 || changeSet.size !== 0) {
-            this.assignment.clear()
-            removeSet.forEach((val) => {
-                this.fsWorker.remove(val)
-            })
-            changeSet.forEach((val) => {
-                const inode = this.fsWorker.visitByPath(val)
-                if (inode && inode.isFile()) {
-                    this.assign(inode as File)
-                }
-            })
-            await this.mapPhase()
-            await this.reducePhase()
-            this.assignment.clear()
-        }
-    }
-
-    private _listen_entry() {
-        if (this.isListening) {
-            this._listen().then((_) => {
-                if (this.isListening) {
-                    setTimeout(this._listen_entry.bind(this), 100)
-                }
-            })
-        }
-    }
-
-    private unlisten() {
-        this.isListening = false
-    }
-
-    private async listen() {
-        if (this.isListening) {
-            return
-        }
-        this.isListening = true
-        return this.listener
-            .listenInit()
-            .then((_) => {
-                setTimeout(this._listen_entry.bind(this), 100)
-                return true
-            })
-            .catch((_) => {
-                console.log("Failed to listen")
-                return false
-            })
-    }
-
-    public async live(port = 8080) {
-        this.listen().then((succ) => {
-            if (succ) {
-                this.server.start(port)
-                return true
+    public serve(port: number) {
+        const server = http.createServer((req, res) => {
+            let head = { "Content-Type": "text/plain" }
+            if (req.url) {
+                const url = new URL(req.url, `http://localhost:${port}`)
+                const decodedPath = decodeURIComponent(url.pathname)
+                console.log(`request ${decodedPath}`)
+                fs.readFile(path.join(this.config.outputDir, decodedPath), (err, data) => {
+                    if (err) {
+                        head["Content-Type"] = 'application/json; charset=UTF-8'
+                        res.writeHead(404, head)
+                        res.end(err.toString())
+                    } else {
+                        if (decodedPath.endsWith("html")) {
+                            head["Content-Type"] = 'text/html; charset=UTF-8'
+                        } else if (decodedPath.endsWith("js")) {
+                            head["Content-Type"] = 'application/javascript; charset=UTF-8'
+                        } else if (decodedPath.endsWith("css")) {
+                            head["Content-Type"] = "text/css; charset=UTF-8"
+                        } else {
+                            head["Content-Type"] = 'text/plain; charset=UTF-8'
+                        }
+                        res.writeHead(200, head)
+                        res.end(data)
+                    }
+                })
             } else {
-                return false
+                res.writeHead(404, { "Content-Type": 'text/plain' })
+                res.end("Page not found")
             }
         })
+        server.listen(port)
     }
 }

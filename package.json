@@ -4,7 +4,7 @@
   "description": "",
   "main": "out/index.js",
   "bin": {
-    "Hi": "bin/Hi"
+    "Hi": "bin/Hi.mjs"
   },
   "type": "module",
   "scripts": {},

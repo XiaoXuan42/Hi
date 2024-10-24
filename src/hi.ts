@@ -143,7 +143,9 @@ export class Hi {
             if (req.url) {
                 const url = new URL(req.url, `http://localhost:${port}`)
                 const decodedPath = decodeURIComponent(url.pathname)
-                fs.readFile(path.join(this.config.outputDir, decodedPath), (err, data) => {
+                const targetPath = path.join(this.config.outputDir, decodedPath)
+                console.log(`Server tries to read ${targetPath}.`)
+                fs.readFile(targetPath, (err, data) => {
                     if (err) {
                         head["Content-Type"] = 'application/json; charset=UTF-8'
                         res.writeHead(404, head)
@@ -167,6 +169,7 @@ export class Hi {
                 res.end("Page not found")
             }
         })
+        console.log(`Server is listening on port ${port}:`)
         server.listen(port)
     }
 }

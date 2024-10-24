@@ -12,7 +12,8 @@ export class HiVueConfig {
     constructor(
         public rootPath: string,
         public srcPath: string,  // relative path
-        public outputPath: string  // relative path
+        public outputPath: string,  // 相对路径，表示npm run build的输出目录
+        public copyToDst: boolean,  // 是否要复制到目标文件夹下
     ) {}
 }
 
@@ -63,9 +64,12 @@ export class HiVue extends Extension {
     async beforeFinish(env: Environment): Promise<void> {
         const vueRoot = this.glbConfig.absPathFromRelSrc(this.config.rootPath)
         await execa.execa('npm', ['run', 'build'], { cwd: vueRoot })
-        const vueOutputPath = path.join(vueRoot, this.config.outputPath)
-        const dstPath = env.router.route(vueOutputPath)
 
-        await fs.promises.cp(vueOutputPath, dstPath, { recursive: true })
+        if (this.config.copyToDst) {
+            const vueOutputPath = path.join(vueRoot, this.config.outputPath)
+            const dstPath = env.router.route(vueOutputPath)
+    
+            await fs.promises.cp(vueOutputPath, dstPath, { recursive: true })
+        }
     }
 }

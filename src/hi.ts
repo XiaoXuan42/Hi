@@ -143,7 +143,6 @@ export class Hi {
             if (req.url) {
                 const url = new URL(req.url, `http://localhost:${port}`)
                 const decodedPath = decodeURIComponent(url.pathname)
-                console.log(`request ${decodedPath}`)
                 fs.readFile(path.join(this.config.outputDir, decodedPath), (err, data) => {
                     if (err) {
                         head["Content-Type"] = 'application/json; charset=UTF-8'

@@ -16,6 +16,7 @@ type MKHeadItem = {
     anchor: string
     level: number
     text: string
+    children: MKHeadItem[]
 }
 
 type MKRenderResult = {
@@ -48,9 +49,34 @@ export class MarkDownUtil {
                 anchor: anchor,
                 level: level,
                 text: text,
+                children: [],
             })
             return `<h${level} id="${anchor}">${text}</h${level}>\n`
         }
+    }
+
+    private static _toHeadItemTree(headList: MKHeadItem[], start: number): number {
+        const rootHead = headList[start]
+        let cur = start + 1
+        while (cur < headList.length) {
+            const curHead = headList[cur]
+            if (curHead.level <= rootHead.level) {
+                break
+            }
+            rootHead.children.push(curHead)
+            cur = this._toHeadItemTree(headList, cur)
+        }
+        return cur
+    }
+
+    private static toHeadItemTree(headList: MKHeadItem[]): MKHeadItem[] {
+        const result: MKHeadItem[] = []
+        let cur = 0
+        while (cur < headList.length) {
+            result.push(headList[cur])
+            cur = this._toHeadItemTree(headList, cur)
+        }
+        return result
     }
 
     // see https://github.com/markedjs/marked/issues/1538
@@ -104,7 +130,7 @@ export class MarkDownUtil {
         )
         return {
             result: render_result,
-            headList: headList,
+            headList: this.toHeadItemTree(headList),
         }
     }
 
@@ -118,7 +144,7 @@ export class MarkDownUtil {
         const frontMatter: any = fmRes.attributes
         const renderRes = MarkDownUtil.renderMarkdown(fmRes.body)
 
-        let title = "无标题"
+        let title = ""
         {
             let minHeader = 9999
             for (var header of renderRes.headList) {
@@ -129,7 +155,7 @@ export class MarkDownUtil {
             }
         }
 
-        let abstract = "无摘要"
+        let abstract = ""
         if ("describe" in frontMatter) {
             abstract = frontMatter.describe
         } else if ("abstract" in frontMatter) {
